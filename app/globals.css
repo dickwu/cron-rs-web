@@ -1,0 +1,214 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  --color-sidebar: #001529;
+  --color-bg-layout: #f5f5f5;
+  --color-terminal-bg: #1e1e1e;
+  --color-terminal-text: #d4d4d4;
+  --color-stderr-bg: #2d1b1b;
+  --color-stderr-text: #f5a5a5;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--color-bg-layout);
+}
+
+/* Mono text utility */
+.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* Status badge styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.status-badge-success {
+  color: #52c41a;
+  background: #f6ffed;
+}
+
+.status-badge-failed {
+  color: #ff4d4f;
+  background: #fff2f0;
+}
+
+.status-badge-running {
+  color: #1677ff;
+  background: #e6f4ff;
+}
+
+.status-badge-retrying {
+  color: #faad14;
+  background: #fffbe6;
+}
+
+.status-badge-timeout {
+  color: #ff4d4f;
+  background: #fff2f0;
+}
+
+.status-badge-skipped {
+  color: #999;
+  background: #f5f5f5;
+}
+
+.status-badge-crashed {
+  color: #cf1322;
+  background: #fff1f0;
+}
+
+/* SSE connection indicator */
+.sse-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.sse-indicator-connected {
+  background-color: #52c41a;
+}
+
+.sse-indicator-connecting {
+  background-color: #faad14;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sse-indicator-disconnected {
+  background-color: #ff4d4f;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Terminal output viewer */
+.output-viewer {
+  background: var(--color-terminal-bg);
+  color: var(--color-terminal-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 16px;
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 500px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.output-viewer-stderr {
+  background: var(--color-stderr-bg);
+  color: var(--color-stderr-text);
+}
+
+.output-viewer-empty {
+  color: #666;
+  font-style: italic;
+}
+
+/* Guided empty state */
+.empty-state {
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.empty-state h2 {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: #262626;
+}
+
+.empty-state p {
+  font-size: 16px;
+  color: #8c8c8c;
+  margin-bottom: 32px;
+}
+
+/* Command text truncation in tables */
+.command-cell {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-cell {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* Login page */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--color-bg-layout);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 0 16px;
+}
+
+/* Responsive: Tablet */
+@media (max-width: 1279px) {
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+/* Responsive: Mobile */
+@media (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .empty-state {
+    padding: 40px 16px;
+  }
+
+  .output-viewer {
+    max-height: 300px;
+    font-size: 12px;
+  }
+}
