@@ -14,15 +14,40 @@ Web dashboard for [cron-rs](https://github.com/dickwu/cron-rs) -- monitor and ma
 - **Responsive** -- desktop, tablet, and mobile layouts
 - **JWT auth** -- login page with configurable API URL
 
-## Quick Start
+## Install
 
-Download the `cron-rs-web` binary from [GitHub Releases](https://github.com/dickwu/cron-rs-web/releases), then:
+### Homebrew (macOS / Linux)
 
 ```bash
-./cron-rs-web          # starts on :3000 by default
+brew tap dickwu/tap
+brew install cron-rs-web
 ```
 
-Open `http://localhost:3000` in your browser. Requires [cron-rs](https://github.com/dickwu/cron-rs) daemon running (default: `localhost:9746`).
+### Download binary
+
+Grab the latest from [GitHub Releases](https://github.com/dickwu/cron-rs-web/releases). Binaries available for:
+
+| Platform | Asset |
+|----------|-------|
+| macOS Apple Silicon | `cron-rs-web-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `cron-rs-web-x86_64-apple-darwin.tar.gz` |
+| Linux x86_64 | `cron-rs-web-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux ARM64 | `cron-rs-web-aarch64-unknown-linux-gnu.tar.gz` |
+| Linux x86_64 (static) | `cron-rs-web-x86_64-unknown-linux-musl.tar.gz` |
+
+## Quick Start
+
+```bash
+# 1. Install and start the backend (required)
+brew install dickwu/tap/cron-rs
+cron-rs init
+cron-rs daemon &
+
+# 2. Start the web dashboard
+cron-rs-web-server          # serves on :3000 by default
+```
+
+Open `http://localhost:3000` in your browser. The dashboard connects to the cron-rs API at `localhost:9746` by default.
 
 ## Development
 
