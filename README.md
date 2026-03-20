@@ -38,13 +38,14 @@ Grab the latest from [GitHub Releases](https://github.com/dickwu/cron-rs-web/rel
 ## Quick Start
 
 ```bash
-# 1. Install and start the backend (required)
-brew install dickwu/tap/cron-rs
+# 1. Install and start the backend on a Linux server (requires systemd)
+# See https://github.com/dickwu/cron-rs for installation
 cron-rs init
 cron-rs daemon &
 
-# 2. Start the web dashboard
-cron-rs-web-server          # serves on :3000 by default
+# 2. Start the web dashboard (can run on any platform)
+cron-rs-web-server --api-url http://your-server:9746
+# Open http://localhost:3000
 ```
 
 Open `http://localhost:3000` in your browser. The dashboard connects to the cron-rs API at `localhost:9746` by default.
