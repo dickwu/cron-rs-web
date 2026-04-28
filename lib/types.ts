@@ -3,6 +3,7 @@ export interface Task {
   name: string;
   command: string;
   schedule: string;
+  tags: string[];
   description: string;
   enabled: boolean;
   max_retries: number;
@@ -77,6 +78,7 @@ export interface CreateTaskPayload {
   name: string;
   command: string;
   schedule: string;
+  tags?: string[];
   description?: string;
   max_retries?: number;
   retry_delay_secs?: number;
@@ -92,6 +94,13 @@ export interface CreateHookPayload {
   task_id: string;
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
+  timeout_secs?: number;
+  run_order?: number;
+}
+
+export interface UpdateHookPayload {
+  hook_type?: 'on_failure' | 'on_success' | 'on_retry_exhausted';
+  command?: string;
   timeout_secs?: number;
   run_order?: number;
 }

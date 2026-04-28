@@ -28,6 +28,7 @@ import { StatusBadge } from '@/components/Dashboard/RecentRuns';
 import { useTask } from '@/hooks/useTasks';
 import { useRuns } from '@/hooks/useRuns';
 import { deleteTask, triggerTask } from '@/lib/api';
+import { describeSchedule } from '@/lib/schedule';
 import type { JobRun } from '@/lib/types';
 
 interface TaskDetailViewProps {
@@ -39,6 +40,15 @@ export default function TaskDetailView({ taskId }: TaskDetailViewProps) {
   const { task, isLoading, mutate } = useTask(taskId);
   const { runs, isLoading: runsLoading } = useRuns({ task_id: taskId, limit: 50 });
   const [editOpen, setEditOpen] = useState(false);
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.replace('/tasks');
+  };
 
   const handleDelete = async () => {
     try {
@@ -115,12 +125,14 @@ export default function TaskDetailView({ taskId }: TaskDetailViewProps) {
     );
   }
 
+  const schedule = describeSchedule(task.schedule);
+
   return (
     <AppLayout>
       <div style={{ marginBottom: 24 }}>
         <Space style={{ width: '100%', justifyContent: 'space-between', display: 'flex' }}>
           <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => router.push('/tasks')} />
+            <Button icon={<ArrowLeftOutlined />} onClick={handleBack} />
             <Typography.Title level={3} style={{ margin: 0 }}>
               {task.name}
             </Typography.Title>
@@ -152,7 +164,19 @@ export default function TaskDetailView({ taskId }: TaskDetailViewProps) {
             <span className="mono">{task.command}</span>
           </Descriptions.Item>
           <Descriptions.Item label="Schedule">
-            <span className="mono">{task.schedule}</span>
+            <Space direction="vertical" size={0}>
+              <span>{schedule.summary}</span>
+              <Typography.Text type="secondary" className="mono">
+                {task.schedule}
+              </Typography.Text>
+            </Space>
+          </Descriptions.Item>
+          <Descriptions.Item label="Tags">
+            <Space size={[0, 4]} wrap>
+              {(task.tags || []).map((tag) => (
+                <Tag key={tag}>{tag}</Tag>
+              ))}
+            </Space>
           </Descriptions.Item>
           <Descriptions.Item label="Concurrency">{task.concurrency_policy}</Descriptions.Item>
           <Descriptions.Item label="Max Retries">{task.max_retries}</Descriptions.Item>
@@ -174,7 +198,7 @@ export default function TaskDetailView({ taskId }: TaskDetailViewProps) {
         </Descriptions>
       </Card>
 
-      <Card title="Hooks" style={{ marginBottom: 16 }}>
+      <Card title="Hook Settings" style={{ marginBottom: 16 }}>
         <HookTable taskId={taskId} />
       </Card>
 

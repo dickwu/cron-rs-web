@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Form, Input, InputNumber, Select, Button, Space, message, Typography } from 'antd';
 import { createTask, updateTask, getSchedulePreview } from '@/lib/api';
+import { describeSchedule } from '@/lib/schedule';
+import { normalizeTags } from '@/lib/tags';
 import type { Task, CreateTaskPayload } from '@/lib/types';
 
 const { TextArea } = Input;
@@ -30,6 +32,7 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
         name: task.name,
         command: task.command,
         schedule: task.schedule,
+        tags: task.tags || [],
         description: task.description,
         max_retries: task.max_retries,
         retry_delay_secs: task.retry_delay_secs,
@@ -42,6 +45,7 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
         max_retries: 0,
         retry_delay_secs: 60,
         concurrency_policy: 'skip',
+        tags: [],
       });
     }
     setSchedulePreview(null);
@@ -70,11 +74,15 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
   const handleSubmit = async (values: CreateTaskPayload) => {
     setLoading(true);
     try {
+      const payload = {
+        ...values,
+        tags: normalizeTags(values.tags),
+      };
       if (isEditing && task) {
-        await updateTask(task.id, values);
+        await updateTask(task.id, payload);
         message.success('Task updated');
       } else {
-        await createTask(values);
+        await createTask(payload);
         message.success('Task created');
       }
       onSuccess();
@@ -125,7 +133,7 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
 
         <Form.Item
           name="schedule"
-          label="Schedule (OnCalendar)"
+          label="Schedule"
           rules={[{ required: true, message: 'Schedule is required' }]}
         >
           <Space.Compact style={{ width: '100%' }}>
@@ -135,6 +143,22 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
               style={{ fontFamily: "var(--font-mono)" }}
             />
           </Space.Compact>
+        </Form.Item>
+
+        <Form.Item shouldUpdate={(prev, current) => prev.schedule !== current.schedule} noStyle>
+          {({ getFieldValue }) => {
+            const schedule = getFieldValue('schedule');
+            if (!schedule) return null;
+
+            return (
+              <Typography.Text
+                type="secondary"
+                style={{ display: 'block', marginTop: -12, marginBottom: 16, fontSize: 12 }}
+              >
+                {describeSchedule(schedule).summary}
+              </Typography.Text>
+            );
+          }}
         </Form.Item>
 
         <div style={{ marginBottom: 16 }}>
@@ -162,6 +186,16 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
 
         <Form.Item name="description" label="Description">
           <TextArea placeholder="Optional description" rows={2} disabled={loading} />
+        </Form.Item>
+
+        <Form.Item name="tags" label="Tags">
+          <Select
+            mode="tags"
+            tokenSeparators={[',']}
+            placeholder="Add tags"
+            disabled={loading}
+            options={[]}
+          />
         </Form.Item>
 
         <Form.Item name="max_retries" label="Max Retries">

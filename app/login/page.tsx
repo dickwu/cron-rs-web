@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Form, Input, Button, Typography, message } from 'antd';
 import { LockOutlined, UserOutlined, ApiOutlined } from '@ant-design/icons';
 import { login } from '@/lib/api';
-import { setToken, setApiUrl, getApiUrl, isAuthenticated } from '@/lib/auth';
+import { setToken, setApiUrl, getApiUrl } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,11 +13,8 @@ export default function LoginPage() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      router.replace('/');
-    }
     form.setFieldsValue({ apiUrl: getApiUrl() });
-  }, [router, form]);
+  }, [form]);
 
   const handleSubmit = async (values: {
     apiUrl: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Tag, Button, Space, Popconfirm, Tooltip, message } from 'antd';
 import {
   EditOutlined,
@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { deleteTask, updateTask, triggerTask } from '@/lib/api';
 import { BulkActions } from './BulkActions';
+import { describeSchedule } from '@/lib/schedule';
 import type { Task } from '@/lib/types';
 
 interface TaskTableProps {
@@ -24,6 +25,16 @@ interface TaskTableProps {
 export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps) {
   const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(tasks.length / pageSize));
+
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  }, [page, pageSize, tasks.length]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -66,7 +77,30 @@ export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps)
       dataIndex: 'schedule',
       key: 'schedule',
       className: 'hide-tablet',
-      render: (val: string) => <span className="schedule-cell">{val}</span>,
+      render: (val: string) => {
+        const schedule = describeSchedule(val);
+        return (
+          <Tooltip title={schedule.detail}>
+            <span className="schedule-cell">
+              <span>{schedule.summary}</span>
+              <span className="schedule-expression">{val}</span>
+            </span>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: 'Tags',
+      dataIndex: 'tags',
+      key: 'tags',
+      width: 180,
+      render: (tags: string[]) => (
+        <Space size={[0, 4]} wrap>
+          {(tags || []).map((tag) => (
+            <Tag key={tag}>{tag}</Tag>
+          ))}
+        </Space>
+      ),
     },
     {
       title: 'Command',
@@ -175,7 +209,16 @@ export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps)
           onClick: () => router.push(`/tasks?id=${record.id}`),
           style: { cursor: 'pointer' },
         })}
-        pagination={{ pageSize: 20, showSizeChanger: true }}
+        pagination={{
+          current: page,
+          pageSize,
+          total: tasks.length,
+          showSizeChanger: true,
+          onChange: (nextPage, nextPageSize) => {
+            setPage(nextPage);
+            setPageSize(nextPageSize);
+          },
+        }}
         size="middle"
       />
     </>

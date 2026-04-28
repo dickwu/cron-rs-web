@@ -11,9 +11,15 @@ type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 export function useSSE() {
   const { mutate } = useSWRConfig();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const statusRef = useRef<ConnectionStatus>('disconnected');
   const retryCountRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setStatus = useCallback((status: ConnectionStatus) => {
+    statusRef.current = status;
+    setConnectionStatus(status);
+  }, []);
 
   const invalidateCaches = useCallback(
     (eventType: SSEEventType) => {
@@ -45,11 +51,12 @@ export function useSSE() {
   const connect = useCallback(async () => {
     const token = getToken();
     if (!token) return;
+    if (controllerRef.current && !controllerRef.current.signal.aborted) return;
 
     const apiUrl = getApiUrl();
     const controller = new AbortController();
     controllerRef.current = controller;
-    setConnectionStatus('connecting');
+    setStatus('connecting');
 
     try {
       const res = await fetch(`${apiUrl}/api/v1/events`, {
@@ -59,6 +66,7 @@ export function useSSE() {
 
       if (res.status === 401) {
         clearToken();
+        controller.abort();
         window.location.href = '/login';
         return;
       }
@@ -67,7 +75,7 @@ export function useSSE() {
         throw new Error(`SSE connection failed: ${res.status}`);
       }
 
-      setConnectionStatus('connected');
+      setStatus('connected');
       retryCountRef.current = 0;
 
       const reader = res.body.getReader();
@@ -109,21 +117,24 @@ export function useSSE() {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('SSE connection error:', err);
     } finally {
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
       if (!controller.signal.aborted) {
-        setConnectionStatus('disconnected');
+        setStatus('disconnected');
         const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
         retryCountRef.current += 1;
         reconnectTimerRef.current = setTimeout(connect, delay);
       }
     }
-  }, [invalidateCaches]);
+  }, [invalidateCaches, setStatus]);
 
   useEffect(() => {
     connect();
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        if (controllerRef.current?.signal.aborted || connectionStatus === 'disconnected') {
+        if (controllerRef.current?.signal.aborted || statusRef.current === 'disconnected') {
           connect();
         }
       } else {
@@ -138,7 +149,7 @@ export function useSSE() {
       controllerRef.current?.abort();
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     };
-  }, [connect, connectionStatus]);
+  }, [connect]);
 
   return { connectionStatus };
 }

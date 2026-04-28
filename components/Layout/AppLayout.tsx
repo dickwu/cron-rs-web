@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Layout, Menu, Typography, Grid } from 'antd';
+import { Button, Grid, Layout, Menu, Typography } from 'antd';
 import {
   DashboardOutlined,
   ScheduleOutlined,
@@ -24,8 +24,8 @@ const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
   { key: '/tasks', icon: <ScheduleOutlined />, label: 'Tasks' },
   { key: '/runs', icon: <HistoryOutlined />, label: 'Runs' },
-  { key: '/hooks', icon: <ApiOutlined />, label: 'Hooks', disabled: true },
-  { key: '/settings', icon: <SettingOutlined />, label: 'Settings', disabled: true },
+  { key: '/hooks', icon: <ApiOutlined />, label: 'Hooks' },
+  { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -85,7 +85,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               borderBottom: '1px solid #f0f0f0',
               position: 'sticky',
               top: 0,
-              zIndex: 100,
+              zIndex: 10,
             }}
           >
             <Typography.Title level={5} style={{ margin: 0 }}>
@@ -110,30 +110,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               display: 'flex',
               justifyContent: 'space-around',
               padding: '8px 0',
-              zIndex: 100,
+              zIndex: 10,
             }}
           >
-            {menuItems
-              .filter((item) => !item.disabled)
-              .map((item) => (
-                <div
-                  key={item.key}
-                  onClick={() => router.push(item.key)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    color: selectedKey === item.key ? '#1677ff' : '#8c8c8c',
-                    fontSize: 10,
-                    minWidth: 64,
-                    padding: '4px 0',
-                  }}
-                >
+            {menuItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => router.push(item.key)}
+                style={{
+                  alignItems: 'center',
+                  background: 'transparent',
+                  border: 0,
+                  color: selectedKey === item.key ? '#1677ff' : '#8c8c8c',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  fontSize: 12,
+                  minWidth: 64,
+                  padding: '4px 0',
+                }}
+              >
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <span style={{ fontSize: 20 }}>{item.icon}</span>
                   {item.label}
-                </div>
-              ))}
+                </span>
+              </button>
+            ))}
           </div>
         </Layout>
       </AuthGuard>
@@ -157,7 +160,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             left: 0,
             top: 0,
             bottom: 0,
-            zIndex: 101,
+            zIndex: 11,
           }}
         >
           <div
@@ -198,7 +201,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             />
           </div>
         </Sider>
-        <Layout style={{ marginLeft: collapsed ? 64 : 220, transition: 'margin-left 0.2s' }}>
+        <Layout style={{ marginLeft: collapsed ? 64 : 220 }}>
           <Header
             style={{
               background: '#fff',
@@ -209,12 +212,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               borderBottom: '1px solid #f0f0f0',
             }}
           >
-            <span
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: 18, cursor: 'pointer' }}
-            >
-              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            </span>
+            />
             {sseIndicator}
           </Header>
           <Content style={{ padding: 24, minHeight: 280 }}>{children}</Content>

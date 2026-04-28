@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { ThemeProvider } from '@/components/Layout/ThemeProvider';
 import './globals.css';
@@ -15,6 +16,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <Script src="/runtime-config.js" strategy="beforeInteractive" />
+      </head>
       <body>
         <AntdRegistry>
           <ThemeProvider>

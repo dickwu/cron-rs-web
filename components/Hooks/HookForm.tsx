@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, InputNumber, Select, message } from 'antd';
-import { createHook } from '@/lib/api';
-import type { CreateHookPayload } from '@/lib/types';
+import { createHook, updateHook } from '@/lib/api';
+import type { CreateHookPayload, Hook } from '@/lib/types';
 
 const { Option } = Select;
 
@@ -12,21 +12,45 @@ interface HookFormProps {
   taskId: string;
   onClose: () => void;
   onSuccess: () => void;
+  hook?: Hook | null;
 }
 
-export function HookForm({ open, taskId, onClose, onSuccess }: HookFormProps) {
+export function HookForm({ open, taskId, onClose, onSuccess, hook }: HookFormProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const isEditing = !!hook;
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (hook) {
+      form.setFieldsValue({
+        hook_type: hook.hook_type,
+        command: hook.command,
+        timeout_secs: hook.timeout_secs ?? 30,
+        run_order: hook.run_order,
+      });
+      return;
+    }
+
+    form.resetFields();
+    form.setFieldsValue({ timeout_secs: 30, run_order: 0, hook_type: 'on_failure' });
+  }, [form, hook, open]);
 
   const handleSubmit = async (values: Omit<CreateHookPayload, 'task_id'>) => {
     setLoading(true);
     try {
-      await createHook({ ...values, task_id: taskId });
-      message.success('Hook created');
+      if (hook) {
+        await updateHook(hook.id, values);
+        message.success('Hook updated');
+      } else {
+        await createHook({ ...values, task_id: taskId });
+        message.success('Hook created');
+      }
       form.resetFields();
       onSuccess();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create hook';
+      const msg = err instanceof Error ? err.message : `Failed to ${isEditing ? 'update' : 'create'} hook`;
       message.error(msg);
     } finally {
       setLoading(false);
@@ -35,7 +59,7 @@ export function HookForm({ open, taskId, onClose, onSuccess }: HookFormProps) {
 
   return (
     <Modal
-      title="Add Hook"
+      title={isEditing ? 'Edit Hook' : 'Add Hook'}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
@@ -45,7 +69,6 @@ export function HookForm({ open, taskId, onClose, onSuccess }: HookFormProps) {
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
-        initialValues={{ timeout_secs: 30, run_order: 0, hook_type: 'on_failure' }}
       >
         <Form.Item
           name="hook_type"

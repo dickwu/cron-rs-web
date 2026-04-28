@@ -8,6 +8,7 @@ import type {
   CreateTaskPayload,
   UpdateTaskPayload,
   CreateHookPayload,
+  UpdateHookPayload,
   LoginPayload,
   LoginResponse,
 } from './types';
@@ -36,7 +37,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (res.status === 401) {
     clearToken();
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && path !== '/api/v1/auth/login') {
       window.location.href = '/login';
     }
     throw new ApiError('Unauthorized', 401);
@@ -125,6 +126,10 @@ export async function getHooks(taskId: string): Promise<Hook[]> {
   return fetchApi<Hook[]>(`/api/v1/tasks/${taskId}/hooks`);
 }
 
+export async function getAllHooks(): Promise<Hook[]> {
+  return fetchApi<Hook[]>('/api/v1/hooks');
+}
+
 export async function createHook(payload: CreateHookPayload): Promise<Hook> {
   return fetchApi<Hook>(`/api/v1/tasks/${payload.task_id}/hooks`, {
     method: 'POST',
@@ -132,8 +137,15 @@ export async function createHook(payload: CreateHookPayload): Promise<Hook> {
   });
 }
 
-export async function deleteHook(taskId: string, hookId: string): Promise<void> {
-  return fetchApi<void>(`/api/v1/tasks/${taskId}/hooks/${hookId}`, {
+export async function updateHook(hookId: string, payload: UpdateHookPayload): Promise<Hook> {
+  return fetchApi<Hook>(`/api/v1/hooks/${hookId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteHook(hookId: string): Promise<void> {
+  return fetchApi<void>(`/api/v1/hooks/${hookId}`, {
     method: 'DELETE',
   });
 }

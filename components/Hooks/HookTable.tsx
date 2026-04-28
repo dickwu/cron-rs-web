@@ -2,21 +2,16 @@
 
 import React, { useState } from 'react';
 import { Table, Tag, Button, Popconfirm, message, Space } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { swrFetcher, deleteHook } from '@/lib/api';
+import { hookTypeLabels } from '@/lib/hooks';
 import { HookForm } from './HookForm';
 import type { Hook } from '@/lib/types';
 
 interface HookTableProps {
   taskId: string;
 }
-
-const hookTypeLabels: Record<Hook['hook_type'], { label: string; color: string }> = {
-  on_failure: { label: 'On Failure', color: 'error' },
-  on_success: { label: 'On Success', color: 'success' },
-  on_retry_exhausted: { label: 'On Retry Exhausted', color: 'warning' },
-};
 
 export function HookTable({ taskId }: HookTableProps) {
   const { data: hooks, isLoading, mutate } = useSWR<Hook[]>(
@@ -25,10 +20,11 @@ export function HookTable({ taskId }: HookTableProps) {
     { revalidateOnFocus: false }
   );
   const [formOpen, setFormOpen] = useState(false);
+  const [editingHook, setEditingHook] = useState<Hook | null>(null);
 
   const handleDelete = async (hookId: string) => {
     try {
-      await deleteHook(taskId, hookId);
+      await deleteHook(hookId);
       message.success('Hook deleted');
       mutate();
     } catch {
@@ -69,11 +65,22 @@ export function HookTable({ taskId }: HookTableProps) {
     {
       title: '',
       key: 'actions',
-      width: 60,
+      width: 96,
       render: (_: unknown, record: Hook) => (
-        <Popconfirm title="Delete this hook?" onConfirm={() => handleDelete(record.id)}>
-          <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-        </Popconfirm>
+        <Space size={4}>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            size="small"
+            onClick={() => {
+              setEditingHook(record);
+              setFormOpen(true);
+            }}
+          />
+          <Popconfirm title="Delete this hook?" onConfirm={() => handleDelete(record.id)}>
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -81,7 +88,15 @@ export function HookTable({ taskId }: HookTableProps) {
   return (
     <>
       <Space style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => setFormOpen(true)}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          size="small"
+          onClick={() => {
+            setEditingHook(null);
+            setFormOpen(true);
+          }}
+        >
           Add Hook
         </Button>
       </Space>
@@ -96,9 +111,14 @@ export function HookTable({ taskId }: HookTableProps) {
       <HookForm
         open={formOpen}
         taskId={taskId}
-        onClose={() => setFormOpen(false)}
+        hook={editingHook}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingHook(null);
+        }}
         onSuccess={() => {
           setFormOpen(false);
+          setEditingHook(null);
           mutate();
         }}
       />

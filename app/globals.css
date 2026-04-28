@@ -167,8 +167,29 @@ body {
 }
 
 .schedule-cell {
-  font-family: var(--font-mono);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: 13px;
+}
+
+.schedule-expression {
+  color: #8c8c8c;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.task-tag-filter {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  margin: -8px 0 16px;
+}
+
+.task-tag-filter-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 24px;
 }
 
 /* Login page */
