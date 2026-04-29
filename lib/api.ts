@@ -8,6 +8,7 @@ import type {
   CreateTaskPayload,
   UpdateTaskPayload,
   CreateHookPayload,
+  CreateGlobalHookPayload,
   UpdateHookPayload,
   LoginPayload,
   LoginResponse,
@@ -130,8 +131,19 @@ export async function getAllHooks(): Promise<Hook[]> {
   return fetchApi<Hook[]>('/api/v1/hooks');
 }
 
+export async function getGlobalHooks(): Promise<Hook[]> {
+  return fetchApi<Hook[]>('/api/v1/hooks/global');
+}
+
 export async function createHook(payload: CreateHookPayload): Promise<Hook> {
   return fetchApi<Hook>(`/api/v1/tasks/${payload.task_id}/hooks`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createGlobalHook(payload: CreateGlobalHookPayload): Promise<Hook> {
+  return fetchApi<Hook>('/api/v1/hooks/global', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

@@ -18,6 +18,7 @@ import {
   Typography,
 } from 'antd';
 import { AppLayout } from '@/components/Layout/AppLayout';
+import { HookTable } from '@/components/Hooks/HookTable';
 import { useStatus } from '@/hooks/useRuns';
 import {
   clearApiUrl,
@@ -248,6 +249,13 @@ export default function SettingsView() {
             </Card>
           </Col>
         </Row>
+
+        <Card title="Global Hooks">
+          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+            Global hooks run for every task when the selected event type matches.
+          </Typography.Text>
+          <HookTable global />
+        </Card>
       </Space>
     </AppLayout>
   );

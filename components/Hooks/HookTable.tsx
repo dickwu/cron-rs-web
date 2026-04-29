@@ -10,12 +10,13 @@ import { HookForm } from './HookForm';
 import type { Hook } from '@/lib/types';
 
 interface HookTableProps {
-  taskId: string;
+  taskId?: string;
+  global?: boolean;
 }
 
-export function HookTable({ taskId }: HookTableProps) {
+export function HookTable({ taskId, global = false }: HookTableProps) {
   const { data: hooks, isLoading, mutate } = useSWR<Hook[]>(
-    `/api/v1/tasks/${taskId}/hooks`,
+    global ? '/api/v1/hooks/global' : taskId ? `/api/v1/tasks/${taskId}/hooks` : null,
     swrFetcher,
     { revalidateOnFocus: false }
   );
@@ -97,7 +98,7 @@ export function HookTable({ taskId }: HookTableProps) {
             setFormOpen(true);
           }}
         >
-          Add Hook
+          {global ? 'Add Global Hook' : 'Add Hook'}
         </Button>
       </Space>
       <Table
@@ -111,6 +112,7 @@ export function HookTable({ taskId }: HookTableProps) {
       <HookForm
         open={formOpen}
         taskId={taskId}
+        isGlobal={global}
         hook={editingHook}
         onClose={() => {
           setFormOpen(false);

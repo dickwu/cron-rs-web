@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Drawer, Form, Input, InputNumber, Select, Button, Space, message, Typography } from 'antd';
-import { createTask, updateTask, getSchedulePreview } from '@/lib/api';
-import { describeSchedule } from '@/lib/schedule';
+import { Alert, Drawer, Form, Input, InputNumber, Select, Button, Space, message, Typography } from 'antd';
+import { createTask, updateTask } from '@/lib/api';
+import { describeSchedule, getImportedCronExpression, normalizeScheduleExpression } from '@/lib/schedule';
 import { normalizeTags } from '@/lib/tags';
+import { SchedulePickerModal } from './SchedulePickerModal';
 import type { Task, CreateTaskPayload } from '@/lib/types';
 
 const { TextArea } = Input;
@@ -20,14 +21,15 @@ interface TaskFormDrawerProps {
 export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawerProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [schedulePreview, setSchedulePreview] = useState<string[] | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
   const isEditing = !!task;
+  const scheduleValue = Form.useWatch('schedule', form);
+  const originalCronExpression = task ? getImportedCronExpression(task.description) : null;
 
   useEffect(() => {
     if (open && task) {
+      form.resetFields();
       form.setFieldsValue({
         name: task.name,
         command: task.command,
@@ -48,34 +50,14 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
         tags: [],
       });
     }
-    setSchedulePreview(null);
-    setPreviewError(null);
   }, [open, task, form]);
-
-  const handlePreviewSchedule = async () => {
-    const schedule = form.getFieldValue('schedule');
-    if (!schedule) {
-      setPreviewError('Enter a schedule');
-      return;
-    }
-    setPreviewLoading(true);
-    setPreviewError(null);
-    try {
-      const times = await getSchedulePreview(schedule, 5);
-      setSchedulePreview(times);
-    } catch {
-      setPreviewError('Invalid format');
-      setSchedulePreview(null);
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
 
   const handleSubmit = async (values: CreateTaskPayload) => {
     setLoading(true);
     try {
       const payload = {
         ...values,
+        schedule: normalizeScheduleExpression(values.schedule),
         tags: normalizeTags(values.tags),
       };
       if (isEditing && task) {
@@ -131,58 +113,39 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
           />
         </Form.Item>
 
+        <Form.Item name="schedule" hidden rules={[{ required: true, message: 'Schedule is required' }]}>
+          <Input />
+        </Form.Item>
+
         <Form.Item
-          name="schedule"
           label="Schedule"
-          rules={[{ required: true, message: 'Schedule is required' }]}
+          required
+          validateStatus={form.getFieldError('schedule').length ? 'error' : undefined}
+          help={form.getFieldError('schedule')[0]}
         >
-          <Space.Compact style={{ width: '100%' }}>
-            <Input
-              placeholder="*-*-* 02:00:00"
-              disabled={loading}
-              style={{ fontFamily: "var(--font-mono)" }}
-            />
-          </Space.Compact>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            {originalCronExpression && (
+              <Alert
+                type="info"
+                showIcon
+                message={`Imported cron source: ${originalCronExpression}`}
+              />
+            )}
+            {scheduleValue ? (
+              <>
+                <Typography.Text>{describeSchedule(scheduleValue).summary}</Typography.Text>
+                <Typography.Text className="mono" type="secondary">
+                  {scheduleValue}
+                </Typography.Text>
+              </>
+            ) : (
+              <Typography.Text type="secondary">No schedule selected yet.</Typography.Text>
+            )}
+            <Button onClick={() => setScheduleModalOpen(true)} disabled={loading}>
+              {scheduleValue ? 'Change Schedule' : 'Set Schedule'}
+            </Button>
+          </Space>
         </Form.Item>
-
-        <Form.Item shouldUpdate={(prev, current) => prev.schedule !== current.schedule} noStyle>
-          {({ getFieldValue }) => {
-            const schedule = getFieldValue('schedule');
-            if (!schedule) return null;
-
-            return (
-              <Typography.Text
-                type="secondary"
-                style={{ display: 'block', marginTop: -12, marginBottom: 16, fontSize: 12 }}
-              >
-                {describeSchedule(schedule).summary}
-              </Typography.Text>
-            );
-          }}
-        </Form.Item>
-
-        <div style={{ marginBottom: 16 }}>
-          <Button size="small" onClick={handlePreviewSchedule} loading={previewLoading}>
-            Preview Schedule
-          </Button>
-          {previewError && (
-            <Typography.Text type="danger" style={{ marginLeft: 8, fontSize: 12 }}>
-              {previewError}
-            </Typography.Text>
-          )}
-          {schedulePreview && (
-            <div style={{ marginTop: 8 }}>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Next runs:
-              </Typography.Text>
-              {schedulePreview.map((time, i) => (
-                <div key={i} className="mono" style={{ fontSize: 12, color: '#595959' }}>
-                  {new Date(time).toLocaleString()}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         <Form.Item name="description" label="Description">
           <TextArea placeholder="Optional description" rows={2} disabled={loading} />
@@ -218,6 +181,17 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
           </Select>
         </Form.Item>
       </Form>
+
+      <SchedulePickerModal
+        open={scheduleModalOpen}
+        value={scheduleValue}
+        originalCronExpression={originalCronExpression}
+        onCancel={() => setScheduleModalOpen(false)}
+        onApply={(nextSchedule) => {
+          form.setFieldValue('schedule', nextSchedule);
+          setScheduleModalOpen(false);
+        }}
+      />
     </Drawer>
   );
 }

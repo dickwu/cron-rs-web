@@ -37,7 +37,7 @@ export default function HookListView() {
   const normalizedQuery = query.trim().toLowerCase();
   const visibleHooks = (hooks || [])
     .filter((hook) => {
-      const task = tasksById.get(hook.task_id);
+      const task = hook.task_id ? tasksById.get(hook.task_id) : undefined;
       const typeLabel = hookTypeLabels[hook.hook_type].label;
 
       if (!normalizedQuery) return true;
@@ -54,8 +54,9 @@ export default function HookListView() {
       ].some((value) => value && value.toLowerCase().includes(normalizedQuery));
     })
     .sort((left, right) => {
-      const leftTask = tasksById.get(left.task_id)?.name || left.task_id;
-      const rightTask = tasksById.get(right.task_id)?.name || right.task_id;
+      const leftTask = left.task_id ? tasksById.get(left.task_id)?.name || left.task_id : 'Global';
+      const rightTask =
+        right.task_id ? tasksById.get(right.task_id)?.name || right.task_id : 'Global';
       return leftTask.localeCompare(rightTask) || left.run_order - right.run_order;
     });
 
@@ -64,6 +65,15 @@ export default function HookListView() {
       title: 'Task',
       key: 'task',
       render: (_: unknown, hook: Hook) => {
+        if (!hook.task_id) {
+          return (
+            <Space direction="vertical" size={0}>
+              <Typography.Text strong>Global</Typography.Text>
+              <Typography.Text type="secondary">Settings</Typography.Text>
+            </Space>
+          );
+        }
+
         const task = tasksById.get(hook.task_id);
 
         return (
@@ -127,7 +137,7 @@ export default function HookListView() {
     );
   }
 
-  if (tasks.length === 0) {
+  if (tasks.length === 0 && (hooks?.length ?? 0) === 0) {
     return (
       <AppLayout>
         <div className="empty-state">
@@ -185,7 +195,7 @@ export default function HookListView() {
             rowKey="id"
             pagination={{ pageSize: 20, showSizeChanger: true }}
             onRow={(hook) => ({
-              onClick: () => router.push(`/tasks?id=${hook.task_id}`),
+              onClick: () => router.push(hook.task_id ? `/tasks?id=${hook.task_id}` : '/settings'),
               style: { cursor: 'pointer' },
             })}
           />

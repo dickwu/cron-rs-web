@@ -2,20 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, InputNumber, Select, message } from 'antd';
-import { createHook, updateHook } from '@/lib/api';
-import type { CreateHookPayload, Hook } from '@/lib/types';
+import { createGlobalHook, createHook, updateHook } from '@/lib/api';
+import type { CreateGlobalHookPayload, CreateHookPayload, Hook } from '@/lib/types';
 
 const { Option } = Select;
 
 interface HookFormProps {
   open: boolean;
-  taskId: string;
+  taskId?: string;
+  isGlobal?: boolean;
   onClose: () => void;
   onSuccess: () => void;
   hook?: Hook | null;
 }
 
-export function HookForm({ open, taskId, onClose, onSuccess, hook }: HookFormProps) {
+export function HookForm({ open, taskId, isGlobal = false, onClose, onSuccess, hook }: HookFormProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const isEditing = !!hook;
@@ -37,13 +38,21 @@ export function HookForm({ open, taskId, onClose, onSuccess, hook }: HookFormPro
     form.setFieldsValue({ timeout_secs: 30, run_order: 0, hook_type: 'on_failure' });
   }, [form, hook, open]);
 
-  const handleSubmit = async (values: Omit<CreateHookPayload, 'task_id'>) => {
+  const handleSubmit = async (
+    values: Omit<CreateHookPayload, 'task_id'> | CreateGlobalHookPayload
+  ) => {
     setLoading(true);
     try {
       if (hook) {
         await updateHook(hook.id, values);
-        message.success('Hook updated');
+        message.success(isGlobal ? 'Global hook updated' : 'Hook updated');
+      } else if (isGlobal) {
+        await createGlobalHook(values);
+        message.success('Global hook created');
       } else {
+        if (!taskId) {
+          throw new Error('Task id is required');
+        }
         await createHook({ ...values, task_id: taskId });
         message.success('Hook created');
       }
@@ -59,7 +68,7 @@ export function HookForm({ open, taskId, onClose, onSuccess, hook }: HookFormPro
 
   return (
     <Modal
-      title={isEditing ? 'Edit Hook' : 'Add Hook'}
+      title={isEditing ? `Edit ${isGlobal ? 'Global ' : ''}Hook` : `Add ${isGlobal ? 'Global ' : ''}Hook`}
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}

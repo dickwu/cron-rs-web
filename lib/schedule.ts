@@ -3,6 +3,31 @@ export interface ScheduleDescription {
   detail: string;
 }
 
+const dayNameValues: Array<[string, string]> = [
+  ['sun', '0'],
+  ['mon', '1'],
+  ['tue', '2'],
+  ['wed', '3'],
+  ['thu', '4'],
+  ['fri', '5'],
+  ['sat', '6'],
+];
+
+const monthNameValues: Array<[string, string]> = [
+  ['jan', '1'],
+  ['feb', '2'],
+  ['mar', '3'],
+  ['apr', '4'],
+  ['may', '5'],
+  ['jun', '6'],
+  ['jul', '7'],
+  ['aug', '8'],
+  ['sep', '9'],
+  ['oct', '10'],
+  ['nov', '11'],
+  ['dec', '12'],
+];
+
 const namedSchedules: Record<string, string> = {
   minutely: 'Every minute',
   hourly: 'Every hour',
@@ -39,6 +64,211 @@ const monthNames = [
   'November',
   'December',
 ];
+
+function replaceCaseInsensitive(value: string, needle: string, replacement: string): string {
+  return value.replace(new RegExp(needle, 'gi'), replacement);
+}
+
+function normalizeNamedField(field: string, names: Array<[string, string]>): string {
+  let normalized = field;
+  for (const [name, replacement] of names) {
+    normalized = replaceCaseInsensitive(normalized, name, replacement);
+  }
+  return normalized;
+}
+
+function normalizeStepOrigin(field: string, origin: string): string {
+  return normalizeNamedField(field, []).replace('*/', `${origin}/`);
+}
+
+function dayNumberToName(value: string): string {
+  const day = Number(value);
+  switch (day) {
+    case 0:
+    case 7:
+      return 'Sun';
+    case 1:
+      return 'Mon';
+    case 2:
+      return 'Tue';
+    case 3:
+      return 'Wed';
+    case 4:
+      return 'Thu';
+    case 5:
+      return 'Fri';
+    case 6:
+      return 'Sat';
+    default:
+      throw new Error(`unsupported day of week: ${value}`);
+  }
+}
+
+function normalizeDayOfWeek(field: string): string | null {
+  if (field === '*' || field === '?') {
+    return null;
+  }
+
+  const normalizedField = normalizeNamedField(field, dayNameValues);
+  const parts = normalizedField.split(',').map((token) => {
+    if (token.includes('/')) {
+      throw new Error('day-of-week step values are not supported');
+    }
+
+    const range = token.split('-');
+    if (range.length === 2) {
+      return `${dayNumberToName(range[0])}..${dayNumberToName(range[1])}`;
+    }
+
+    return dayNumberToName(token);
+  });
+
+  return parts.join(',');
+}
+
+function cronMacroToOnCalendar(macroName: string): string {
+  switch (macroName.toLowerCase()) {
+    case '@hourly':
+      return '*-*-* *:00:00';
+    case '@daily':
+    case '@midnight':
+      return '*-*-* 00:00:00';
+    case '@weekly':
+      return 'Sun *-*-* 00:00:00';
+    case '@monthly':
+      return '*-*-01 00:00:00';
+    case '@yearly':
+    case '@annually':
+      return '*-01-01 00:00:00';
+    case '@reboot':
+      throw new Error('@reboot has no timer schedule equivalent');
+    default:
+      throw new Error(`unsupported cron macro: ${macroName}`);
+  }
+}
+
+function cronFieldsToOnCalendar(fields: string[]): string {
+  if (fields.length !== 5) {
+    throw new Error('expected exactly 5 cron fields');
+  }
+
+  const minute = normalizeStepOrigin(fields[0], '0');
+  const hour = normalizeStepOrigin(fields[1], '0');
+  const dayOfMonth = normalizeStepOrigin(fields[2], '1');
+  const month = normalizeNamedField(fields[3], monthNameValues);
+  const dayOfWeek = normalizeDayOfWeek(fields[4]);
+
+  if (dayOfWeek && dayOfMonth !== '*') {
+    throw new Error(
+      'cron with both day-of-month and day-of-week cannot be represented as one systemd schedule'
+    );
+  }
+
+  const date = `*-${month}-${dayOfMonth}`;
+  const time = `${hour}:${minute}:00`;
+
+  return dayOfWeek ? `${dayOfWeek} ${date} ${time}` : `${date} ${time}`;
+}
+
+function canonicalizeOnCalendarExpression(expression: string): string {
+  const trimmed = expression.trim();
+  const parts = trimmed.split(/\s+/);
+
+  if (parts.length >= 3 && !parts[0].includes('-') && parts[1].includes('-')) {
+    const [day, date, time] = parts;
+    return `${day} ${canonicalizeOnCalendarExpression(`${date} ${time}`)}`;
+  }
+
+  if (parts.length !== 2) {
+    return trimmed;
+  }
+
+  const [date, time] = parts;
+  const dateParts = date.split('-');
+  const timeParts = time.split(':');
+
+  if (dateParts.length !== 3 || timeParts.length !== 3) {
+    return trimmed;
+  }
+
+  const normalizeDatePart = (value: string) =>
+    value === '*' ? value : String(Number(value));
+  const normalizeTimePart = (value: string) =>
+    value === '*' ? value : String(Number(value));
+
+  const normalizedDate = dateParts.map(normalizeDatePart).join('-');
+  const normalizedTime = timeParts.map(normalizeTimePart).join(':');
+
+  return `${normalizedDate} ${normalizedTime}`;
+}
+
+function isCronExpression(expression: string): boolean {
+  const trimmed = expression.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('@')) return true;
+  return trimmed.split(/\s+/).length === 5;
+}
+
+export function getImportedCronExpression(description: string): string | null {
+  const match = description.match(/^Imported from crontab line \d+:\s*(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const importedLine = match[1].trim();
+  if (!importedLine) {
+    return null;
+  }
+
+  if (importedLine.startsWith('@')) {
+    return importedLine.split(/\s+/, 2)[0];
+  }
+
+  const fields = importedLine.split(/\s+/);
+  if (fields.length < 6) {
+    return null;
+  }
+
+  return fields.slice(0, 5).join(' ');
+}
+
+export function normalizeScheduleExpression(expression: string): string {
+  const trimmed = expression.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('@')) {
+    return cronMacroToOnCalendar(trimmed);
+  }
+
+  const fields = trimmed.split(/\s+/);
+  if (fields.length === 5) {
+    return cronFieldsToOnCalendar(fields);
+  }
+
+  return trimmed;
+}
+
+export function getEditableScheduleExpression(schedule: string, description: string): string {
+  const importedCron = getImportedCronExpression(description);
+  if (!importedCron) {
+    return schedule;
+  }
+
+  try {
+    if (
+      canonicalizeOnCalendarExpression(normalizeScheduleExpression(importedCron)) ===
+      canonicalizeOnCalendarExpression(schedule)
+    ) {
+      return importedCron;
+    }
+  } catch {
+    return schedule;
+  }
+
+  return schedule;
+}
 
 function padTimePart(part: string): string {
   return part === '*' ? part : part.padStart(2, '0');
@@ -141,6 +371,14 @@ export function describeSchedule(schedule: string): ScheduleDescription {
   const expression = schedule.trim();
   if (!expression) {
     return { summary: 'No schedule', detail: '' };
+  }
+
+  if (isCronExpression(expression)) {
+    try {
+      return describeSchedule(normalizeScheduleExpression(expression));
+    } catch {
+      return { summary: 'Custom cron schedule', detail: expression };
+    }
   }
 
   const named = namedSchedules[expression.toLowerCase()];

@@ -16,10 +16,10 @@ export interface Task {
 
 export interface Hook {
   id: string;
-  task_id: string;
+  task_id: string | null;
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
-  timeout_secs: number;
+  timeout_secs: number | null;
   run_order: number;
   created_at: string;
 }
@@ -92,6 +92,13 @@ export interface UpdateTaskPayload extends Partial<CreateTaskPayload> {
 
 export interface CreateHookPayload {
   task_id: string;
+  hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
+  command: string;
+  timeout_secs?: number;
+  run_order?: number;
+}
+
+export interface CreateGlobalHookPayload {
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
   timeout_secs?: number;

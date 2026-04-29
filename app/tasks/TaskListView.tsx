@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Typography, Button, Space, Tag } from 'antd';
-import { PlusOutlined, ScheduleOutlined } from '@ant-design/icons';
+import { Typography, Button, Input, Space, Tag } from 'antd';
+import { PlusOutlined, ScheduleOutlined, SearchOutlined } from '@ant-design/icons';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { TaskTable } from '@/components/Tasks/TaskTable';
 import { TaskFormDrawer } from '@/components/Tasks/TaskForm';
@@ -15,10 +15,25 @@ export default function TaskListView() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [query, setQuery] = useState('');
   const tagOptions = useMemo(() => collectTaskTags(tasks), [tasks]);
+  const normalizedQuery = query.trim().toLowerCase();
   const filteredTasks = useMemo(
-    () => tasks.filter((task) => taskMatchesTags(task, selectedTags)),
-    [tasks, selectedTags]
+    () =>
+      tasks.filter((task) => {
+        if (!taskMatchesTags(task, selectedTags)) {
+          return false;
+        }
+
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        return [task.name, task.command].some(
+          (value) => value && value.toLowerCase().includes(normalizedQuery)
+        );
+      }),
+    [normalizedQuery, tasks, selectedTags]
   );
 
   const handleEdit = (task: Task) => {
@@ -72,6 +87,14 @@ export default function TaskListView() {
             Tasks
           </Typography.Title>
           <Space wrap>
+            <Input
+              allowClear
+              placeholder="Search name or command"
+              prefix={<SearchOutlined />}
+              style={{ width: 280 }}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
               New Task
             </Button>
