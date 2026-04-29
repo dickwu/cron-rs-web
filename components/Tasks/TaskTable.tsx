@@ -10,7 +10,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
-import { deleteTask, updateTask, triggerTask } from '@/lib/api';
+import { deleteTask, enableTask, disableTask, triggerTask } from '@/lib/api';
 import { BulkActions } from './BulkActions';
 import { describeSchedule } from '@/lib/schedule';
 import type { Task } from '@/lib/types';
@@ -48,8 +48,13 @@ export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps)
 
   const handleToggle = async (task: Task) => {
     try {
-      await updateTask(task.id, { enabled: !task.enabled });
-      message.success(task.enabled ? 'Task disabled' : 'Task enabled');
+      if (task.enabled) {
+        await disableTask(task.id);
+        message.success('Task disabled');
+      } else {
+        await enableTask(task.id);
+        message.success('Task enabled');
+      }
       onRefresh();
     } catch {
       message.error('Failed to update task');

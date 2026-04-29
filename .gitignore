@@ -2,3 +2,10 @@ node_modules
 .next
 out
 server/target
+
+# macOS AppleDouble metadata (leaks in via tar from macOS)
+._*
+.DS_Store
+
+# Playwright local test artifacts
+.playwright-cli/
