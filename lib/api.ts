@@ -100,6 +100,14 @@ export async function triggerTask(id: string): Promise<void> {
   return fetchApi<void>(`/api/v1/tasks/${id}/trigger`, { method: 'POST' });
 }
 
+export async function enableTask(id: string): Promise<void> {
+  return fetchApi<void>(`/api/v1/tasks/${id}/enable`, { method: 'POST' });
+}
+
+export async function disableTask(id: string): Promise<void> {
+  return fetchApi<void>(`/api/v1/tasks/${id}/disable`, { method: 'POST' });
+}
+
 // Runs
 export async function getRuns(params?: {
   task_id?: string;

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Space, Button, Modal, message } from 'antd';
 import { DeleteOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
-import { updateTask, deleteTask } from '@/lib/api';
+import { enableTask, disableTask, deleteTask } from '@/lib/api';
 
 interface BulkActionsProps {
   selectedIds: string[];
@@ -18,7 +18,7 @@ export function BulkActions({ selectedIds, onComplete }: BulkActionsProps) {
   const handleBulkEnable = async () => {
     setLoading(true);
     try {
-      await Promise.all(selectedIds.map((id) => updateTask(id, { enabled: true })));
+      await Promise.all(selectedIds.map((id) => enableTask(id)));
       message.success(`Enabled ${selectedIds.length} tasks`);
       onComplete();
     } catch {
@@ -31,7 +31,7 @@ export function BulkActions({ selectedIds, onComplete }: BulkActionsProps) {
   const handleBulkDisable = async () => {
     setLoading(true);
     try {
-      await Promise.all(selectedIds.map((id) => updateTask(id, { enabled: false })));
+      await Promise.all(selectedIds.map((id) => disableTask(id)));
       message.success(`Disabled ${selectedIds.length} tasks`);
       onComplete();
     } catch {
