@@ -19,13 +19,15 @@ import {
   EditOutlined,
   DeleteOutlined,
   PlayCircleOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import { TaskFormDrawer } from '@/components/Tasks/TaskForm';
 import { HookTable } from '@/components/Hooks/HookTable';
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
 import { useTask } from '@/hooks/useTasks';
 import { useRuns } from '@/hooks/useRuns';
-import { deleteTask, triggerTask } from '@/lib/api';
+import { deleteTask, triggerTask, enableTask, disableTask } from '@/lib/api';
 import { describeSchedule } from '@/lib/schedule';
 import { fmtDateTime } from '@/lib/date';
 import type { JobRun } from '@/lib/types';
@@ -71,6 +73,22 @@ export function TaskDetailContent({
       message.success('Task triggered');
     } catch {
       message.error('Failed to trigger task');
+    }
+  };
+
+  const handleToggle = async () => {
+    if (!task) return;
+    try {
+      if (task.enabled) {
+        await disableTask(taskId);
+        message.success('Task disabled');
+      } else {
+        await enableTask(taskId);
+        message.success('Task enabled');
+      }
+      mutate();
+    } catch {
+      message.error(`Failed to ${task.enabled ? 'disable' : 'enable'} task`);
     }
   };
 
@@ -142,6 +160,12 @@ export function TaskDetailContent({
           <Space wrap>
             <Button icon={<PlayCircleOutlined />} onClick={handleTrigger}>
               Trigger
+            </Button>
+            <Button
+              icon={task.enabled ? <StopOutlined /> : <CheckCircleOutlined />}
+              onClick={handleToggle}
+            >
+              {task.enabled ? 'Disable' : 'Enable'}
             </Button>
             <Button icon={<EditOutlined />} onClick={() => setEditOpen(true)}>
               Edit
