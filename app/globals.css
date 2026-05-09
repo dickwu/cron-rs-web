@@ -158,9 +158,11 @@ body {
 
 /* Command text truncation in tables */
 .command-cell {
+  display: inline-block;
+  vertical-align: middle;
   font-family: var(--font-mono);
   font-size: 13px;
-  max-width: 300px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
