@@ -15,9 +15,10 @@ interface RunDetailViewProps {
   run: JobRun;
   hookRuns: HookRun[];
   hookRunsLoading: boolean;
+  taskName?: string;
 }
 
-export function RunDetailView({ run, hookRuns, hookRunsLoading }: RunDetailViewProps) {
+export function RunDetailView({ run, hookRuns, hookRunsLoading, taskName }: RunDetailViewProps) {
   const hookColumns = [
     {
       title: 'Hook ID',
@@ -103,8 +104,14 @@ export function RunDetailView({ run, hookRuns, hookRunsLoading }: RunDetailViewP
 
       <Card style={{ marginBottom: 16 }}>
         <Descriptions column={{ xs: 1, sm: 2 }}>
-          <Descriptions.Item label="Task ID">
-            <span className="mono">{run.task_id}</span>
+          <Descriptions.Item label="Task">
+            {taskName ? (
+              <span>
+                {taskName} <span className="mono" style={{ color: '#999', fontSize: 12 }}>({run.task_id})</span>
+              </span>
+            ) : (
+              <span className="mono">{run.task_id}</span>
+            )}
           </Descriptions.Item>
           <Descriptions.Item label="Run ID">
             <span className="mono">{run.id}</span>

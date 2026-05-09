@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Table } from 'antd';
+import { Table, Tooltip } from 'antd';
 import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
-import type { JobRun } from '@/lib/types';
+import type { JobRun, Task } from '@/lib/types';
 
 interface RunsTableProps {
   runs: JobRun[];
   loading: boolean;
+  taskMap?: Record<string, Task>;
   pagination?: {
     current: number;
     pageSize: number;
@@ -17,7 +18,7 @@ interface RunsTableProps {
   };
 }
 
-export function RunsTable({ runs, loading, pagination }: RunsTableProps) {
+export function RunsTable({ runs, loading, taskMap, pagination }: RunsTableProps) {
   const router = useRouter();
 
   const columns = [
@@ -26,6 +27,17 @@ export function RunsTable({ runs, loading, pagination }: RunsTableProps) {
       dataIndex: 'task_id',
       key: 'task_id',
       ellipsis: true,
+      render: (taskId: string) => {
+        const task = taskMap?.[taskId];
+        if (!task) {
+          return <span className="mono">{taskId}</span>;
+        }
+        return (
+          <Tooltip title={taskId}>
+            <span>{task.name}</span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: 'Status',

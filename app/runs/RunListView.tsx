@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Typography, Card, Select, Space } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Typography, Card, Select, Space, Tag } from 'antd';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { RunsTable } from '@/components/Runs/RunsTable';
 import { useRuns } from '@/hooks/useRuns';
 import { useTasks } from '@/hooks/useTasks';
+import { collectTaskTags, taskMatchesTags } from '@/lib/tags';
+import type { Task } from '@/lib/types';
 
 const statusOptions = [
   { value: '', label: 'All Statuses' },
@@ -18,24 +20,69 @@ const statusOptions = [
   { value: 'crashed', label: 'Crashed' },
 ];
 
+// Pull a wider window when any client-side filter is engaged so pagination
+// stays accurate after filtering.
+const FETCH_LIMIT = 500;
+
 export default function RunListView() {
   const [taskFilter, setTaskFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   const { tasks } = useTasks();
-  const { runs, isLoading } = useRuns({
+  const taskMap = useMemo<Record<string, Task>>(() => {
+    const map: Record<string, Task> = {};
+    for (const task of tasks) map[task.id] = task;
+    return map;
+  }, [tasks]);
+
+  const { runs: allRuns, isLoading } = useRuns({
     task_id: taskFilter || undefined,
     status: statusFilter || undefined,
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
+    limit: FETCH_LIMIT,
   });
+
+  const tagOptions = useMemo(() => collectTaskTags(tasks), [tasks]);
+  const tagsActive = selectedTags.length > 0;
+
+  const matchingTaskIds = useMemo(() => {
+    if (!tagsActive) return null;
+    const ids = new Set<string>();
+    for (const task of tasks) {
+      if (taskMatchesTags(task, selectedTags)) ids.add(task.id);
+    }
+    return ids;
+  }, [tasks, selectedTags, tagsActive]);
+
+  const filteredRuns = useMemo(() => {
+    if (!matchingTaskIds) return allRuns;
+    return allRuns.filter((run) => matchingTaskIds.has(run.task_id));
+  }, [allRuns, matchingTaskIds]);
 
   const taskOptions = [
     { value: '', label: 'All Tasks' },
     ...tasks.map((t) => ({ value: t.id, label: t.name })),
   ];
+
+  const handleTagChange = (tag: string, checked: boolean) => {
+    setSelectedTags((current) =>
+      checked ? [...current, tag] : current.filter((t) => t !== tag)
+    );
+    setPage(1);
+  };
+
+  // When tag filter is engaged we paginate the filtered list locally because
+  // the backend only knows about a single task_id, not tag membership.
+  const pageStart = (page - 1) * pageSize;
+  const pageEnd = pageStart + pageSize;
+  const visibleRuns = tagsActive ? filteredRuns.slice(pageStart, pageEnd) : filteredRuns;
+  const total = tagsActive
+    ? filteredRuns.length
+    : filteredRuns.length < pageSize
+      ? (page - 1) * pageSize + filteredRuns.length
+      : page * pageSize + 1;
 
   return (
     <AppLayout>
@@ -72,13 +119,42 @@ export default function RunListView() {
         </Space>
       </Card>
 
+      {tagOptions.length > 0 && (
+        <div className="task-tag-filter" style={{ marginBottom: 16 }}>
+          <Typography.Text type="secondary" className="task-tag-filter-label">
+            Tags
+          </Typography.Text>
+          <Space size={[6, 8]} wrap>
+            <Tag.CheckableTag
+              checked={selectedTags.length === 0}
+              onChange={() => {
+                setSelectedTags([]);
+                setPage(1);
+              }}
+            >
+              All
+            </Tag.CheckableTag>
+            {tagOptions.map((tag) => (
+              <Tag.CheckableTag
+                key={tag}
+                checked={selectedTags.includes(tag)}
+                onChange={(checked) => handleTagChange(tag, checked)}
+              >
+                {tag}
+              </Tag.CheckableTag>
+            ))}
+          </Space>
+        </div>
+      )}
+
       <RunsTable
-        runs={runs}
+        runs={visibleRuns}
         loading={isLoading}
+        taskMap={taskMap}
         pagination={{
           current: page,
           pageSize,
-          total: runs.length < pageSize ? (page - 1) * pageSize + runs.length : page * pageSize + 1,
+          total,
           onChange: (p, ps) => {
             setPage(p);
             setPageSize(ps);
