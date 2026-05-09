@@ -28,6 +28,7 @@ import {
   getStoredApiUrl,
   setApiUrl,
 } from '@/lib/auth';
+import { fmtDateTime } from '@/lib/date';
 
 interface TokenClaims {
   exp?: number;
@@ -62,7 +63,7 @@ export default function SettingsView() {
   const [claims, setClaims] = useState<TokenClaims | null>(null);
   const [origin, setOrigin] = useState('Unknown');
 
-  const expiryLabel = claims?.exp ? new Date(claims.exp * 1000).toLocaleString() : 'Unknown';
+  const expiryLabel = claims?.exp ? fmtDateTime(claims.exp * 1000) : 'Unknown';
 
   useEffect(() => {
     const nextBrowserDefault = getBrowserDefaultApiUrl();

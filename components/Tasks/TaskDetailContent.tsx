@@ -27,6 +27,7 @@ import { useTask } from '@/hooks/useTasks';
 import { useRuns } from '@/hooks/useRuns';
 import { deleteTask, triggerTask } from '@/lib/api';
 import { describeSchedule } from '@/lib/schedule';
+import { fmtDateTime } from '@/lib/date';
 import type { JobRun } from '@/lib/types';
 
 interface TaskDetailContentProps {
@@ -85,7 +86,8 @@ export function TaskDetailContent({
       title: 'Started',
       dataIndex: 'started_at',
       key: 'started_at',
-      render: (val: string) => new Date(val).toLocaleString(),
+      width: 140,
+      render: (val: string) => fmtDateTime(val),
     },
     {
       title: 'Duration',
@@ -185,10 +187,10 @@ export function TaskDetailContent({
             </Descriptions.Item>
           )}
           <Descriptions.Item label="Created">
-            {new Date(task.created_at).toLocaleString()}
+            {fmtDateTime(task.created_at)}
           </Descriptions.Item>
           <Descriptions.Item label="Updated">
-            {new Date(task.updated_at).toLocaleString()}
+            {fmtDateTime(task.updated_at)}
           </Descriptions.Item>
         </Descriptions>
       </Card>

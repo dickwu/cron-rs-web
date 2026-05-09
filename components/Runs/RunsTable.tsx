@@ -4,6 +4,7 @@ import React from 'react';
 import { Table, Tooltip } from 'antd';
 import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
+import { fmtDateTime } from '@/lib/date';
 import type { JobRun, Task } from '@/lib/types';
 
 interface RunsTableProps {
@@ -50,8 +51,8 @@ export function RunsTable({ runs, loading, taskMap, pagination }: RunsTableProps
       title: 'Started',
       dataIndex: 'started_at',
       key: 'started_at',
-      width: 180,
-      render: (val: string) => new Date(val).toLocaleString(),
+      width: 140,
+      render: (val: string) => fmtDateTime(val),
     },
     {
       title: 'Duration',

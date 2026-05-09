@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useRuns } from '@/hooks/useRuns';
 import { useTasks } from '@/hooks/useTasks';
+import { fmtDateTime } from '@/lib/date';
 import type { JobRun, Task } from '@/lib/types';
 
 const statusConfig: Record<
@@ -78,14 +79,8 @@ export function RecentRuns() {
       title: 'Started',
       dataIndex: 'started_at',
       key: 'started_at',
-      width: 180,
-      render: (val: string) => {
-        try {
-          return new Date(val).toLocaleString();
-        } catch {
-          return val;
-        }
-      },
+      width: 140,
+      render: (val: string) => fmtDateTime(val),
     },
     {
       title: 'Duration',

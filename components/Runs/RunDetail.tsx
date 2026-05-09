@@ -11,6 +11,7 @@ import {
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
 import { TaskDetailModal } from '@/components/Tasks/TaskDetailModal';
 import { OutputViewer } from './OutputViewer';
+import { fmtDateTime } from '@/lib/date';
 import type { JobRun, HookRun } from '@/lib/types';
 
 interface RunDetailViewProps {
@@ -50,8 +51,8 @@ export function RunDetailView({ run, hookRuns, hookRunsLoading, taskName }: RunD
       title: 'Started',
       dataIndex: 'started_at',
       key: 'started_at',
-      width: 180,
-      render: (val: string) => new Date(val).toLocaleString(),
+      width: 140,
+      render: (val: string) => fmtDateTime(val),
     },
   ];
 
@@ -136,10 +137,10 @@ export function RunDetailView({ run, hookRuns, hookRunsLoading, taskName }: RunD
             <span className="mono">{run.id}</span>
           </Descriptions.Item>
           <Descriptions.Item label="Started">
-            {new Date(run.started_at).toLocaleString()}
+            {fmtDateTime(run.started_at)}
           </Descriptions.Item>
           <Descriptions.Item label="Finished">
-            {run.finished_at ? new Date(run.finished_at).toLocaleString() : 'Still running'}
+            {run.finished_at ? fmtDateTime(run.finished_at) : 'Still running'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
