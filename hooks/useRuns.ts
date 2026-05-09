@@ -23,7 +23,7 @@ export function useRuns(params?: {
   const { data, error, isLoading, mutate } = useSWR<JobRun[]>(
     key,
     swrFetcher,
-    { revalidateOnFocus: false }
+    { refreshInterval: 5000, revalidateOnFocus: true }
   );
 
   return {
@@ -39,7 +39,7 @@ export function useRun(id: string | null) {
   const { data, error, isLoading, mutate } = useSWR<JobRun>(
     id ? `/api/v1/runs/${id}` : null,
     swrFetcher,
-    { revalidateOnFocus: false }
+    { refreshInterval: 5000, revalidateOnFocus: true }
   );
 
   return {
@@ -55,7 +55,7 @@ export function useHookRuns(runId: string | null) {
   const { data, error, isLoading, mutate } = useSWR<HookRun[]>(
     runId ? `/api/v1/runs/${runId}/hooks` : null,
     swrFetcher,
-    { revalidateOnFocus: false }
+    { refreshInterval: 10000, revalidateOnFocus: true }
   );
 
   return {
