@@ -51,6 +51,7 @@ export default function RunDetailViewPage({ runId }: RunDetailViewPageProps) {
         hookRuns={hookRuns}
         hookRunsLoading={hookRunsLoading}
         taskName={task?.name}
+        taskDescription={task?.description}
       />
     </AppLayout>
   );

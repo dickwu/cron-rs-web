@@ -19,10 +19,12 @@ interface RunDetailViewProps {
   hookRuns: HookRun[];
   hookRunsLoading: boolean;
   taskName?: string;
+  taskDescription?: string;
 }
 
-export function RunDetailView({ run, hookRuns, hookRunsLoading, taskName }: RunDetailViewProps) {
+export function RunDetailView({ run, hookRuns, hookRunsLoading, taskName, taskDescription }: RunDetailViewProps) {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const trimmedTaskDescription = taskDescription?.trim();
   const hookColumns = [
     {
       title: 'Hook ID',
@@ -136,6 +138,11 @@ export function RunDetailView({ run, hookRuns, hookRunsLoading, taskName }: RunD
           <Descriptions.Item label="Run ID">
             <span className="mono">{run.id}</span>
           </Descriptions.Item>
+          {trimmedTaskDescription && (
+            <Descriptions.Item label="Description" span={2}>
+              <Typography.Text>{trimmedTaskDescription}</Typography.Text>
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="Started">
             {fmtDateTime(run.started_at)}
           </Descriptions.Item>
