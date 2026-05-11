@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Card, Table, Tag, Typography, Skeleton } from 'antd';
+import React, { useMemo } from 'react';
+import { Card, Table, Tag, Tooltip, Typography, Skeleton } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -13,7 +13,9 @@ import {
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { useRuns } from '@/hooks/useRuns';
-import type { JobRun } from '@/lib/types';
+import { useTasks } from '@/hooks/useTasks';
+import { fmtDateTime } from '@/lib/date';
+import type { JobRun, Task } from '@/lib/types';
 
 const statusConfig: Record<
   JobRun['status'],
@@ -42,6 +44,12 @@ export { StatusBadge };
 export function RecentRuns() {
   const router = useRouter();
   const { runs, isLoading, isError } = useRuns({ limit: 20 });
+  const { tasks } = useTasks();
+  const taskMap = useMemo<Record<string, Task>>(() => {
+    const map: Record<string, Task> = {};
+    for (const task of tasks) map[task.id] = task;
+    return map;
+  }, [tasks]);
 
   const columns = [
     {
@@ -50,6 +58,15 @@ export function RecentRuns() {
       key: 'task_id',
       ellipsis: true,
       width: 200,
+      render: (taskId: string) => {
+        const task = taskMap[taskId];
+        if (!task) return <span className="mono">{taskId}</span>;
+        return (
+          <Tooltip title={taskId}>
+            <span>{task.name}</span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: 'Status',
@@ -62,14 +79,8 @@ export function RecentRuns() {
       title: 'Started',
       dataIndex: 'started_at',
       key: 'started_at',
-      width: 180,
-      render: (val: string) => {
-        try {
-          return new Date(val).toLocaleString();
-        } catch {
-          return val;
-        }
-      },
+      width: 140,
+      render: (val: string) => fmtDateTime(val),
     },
     {
       title: 'Duration',

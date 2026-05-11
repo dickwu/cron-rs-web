@@ -112,8 +112,10 @@ export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps)
       dataIndex: 'command',
       key: 'command',
       className: 'hide-tablet',
+      width: 320,
+      ellipsis: { showTitle: false },
       render: (val: string) => (
-        <Tooltip title={val}>
+        <Tooltip title={val} placement="topLeft">
           <span className="command-cell">{val}</span>
         </Tooltip>
       ),

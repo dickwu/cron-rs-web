@@ -7,6 +7,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { RunDetailView } from '@/components/Runs/RunDetail';
 import { useRun, useHookRuns } from '@/hooks/useRuns';
+import { useTask } from '@/hooks/useTasks';
 
 interface RunDetailViewPageProps {
   runId: string;
@@ -16,6 +17,7 @@ export default function RunDetailViewPage({ runId }: RunDetailViewPageProps) {
   const router = useRouter();
   const { run, isLoading } = useRun(runId);
   const { hookRuns, isLoading: hookRunsLoading } = useHookRuns(runId);
+  const { task } = useTask(run?.task_id ?? null);
 
   if (isLoading) {
     return (
@@ -44,7 +46,12 @@ export default function RunDetailViewPage({ runId }: RunDetailViewPageProps) {
         </Space>
       </div>
 
-      <RunDetailView run={run} hookRuns={hookRuns} hookRunsLoading={hookRunsLoading} />
+      <RunDetailView
+        run={run}
+        hookRuns={hookRuns}
+        hookRunsLoading={hookRunsLoading}
+        taskName={task?.name}
+      />
     </AppLayout>
   );
 }

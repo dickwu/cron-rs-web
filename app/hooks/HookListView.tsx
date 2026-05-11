@@ -28,7 +28,7 @@ export default function HookListView() {
   const { data: hooks, error: hooksError, isLoading: hooksLoading } = useSWR<Hook[]>(
     '/api/v1/hooks',
     swrFetcher,
-    { revalidateOnFocus: false }
+    { refreshInterval: 15000, revalidateOnFocus: true }
   );
   const [query, setQuery] = useState('');
 

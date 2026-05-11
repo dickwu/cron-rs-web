@@ -15,6 +15,7 @@ import {
 } from 'antd';
 import { getSchedulePreview } from '@/lib/api';
 import { describeSchedule } from '@/lib/schedule';
+import { fmtDateTime } from '@/lib/date';
 import {
   applyCommonPreset,
   buildOnCalendarExpression,
@@ -440,7 +441,7 @@ export function SchedulePickerModal({
           ) : (
             preview.map((time) => (
               <div key={time} className="mono" style={{ fontSize: 12, color: '#595959' }}>
-                {new Date(time).toLocaleString()}
+                {fmtDateTime(time)}
               </div>
             ))
           )}

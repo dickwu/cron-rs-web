@@ -18,7 +18,7 @@ export function HookTable({ taskId, global = false }: HookTableProps) {
   const { data: hooks, isLoading, mutate } = useSWR<Hook[]>(
     global ? '/api/v1/hooks/global' : taskId ? `/api/v1/tasks/${taskId}/hooks` : null,
     swrFetcher,
-    { revalidateOnFocus: false }
+    { refreshInterval: 15000, revalidateOnFocus: true }
   );
   const [formOpen, setFormOpen] = useState(false);
   const [editingHook, setEditingHook] = useState<Hook | null>(null);
