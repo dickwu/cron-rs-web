@@ -120,3 +120,11 @@ export interface LoginPayload {
 export interface LoginResponse {
   token: string;
 }
+
+export interface AppSettings {
+  retention_days: number;
+}
+
+export interface UpdateSettingsPayload {
+  retention_days: number;
+}

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import {
   Alert,
   App,
@@ -11,6 +12,7 @@ import {
   Descriptions,
   Form,
   Input,
+  InputNumber,
   Row,
   Space,
   Statistic,
@@ -28,6 +30,8 @@ import {
   getStoredApiUrl,
   setApiUrl,
 } from '@/lib/auth';
+import { swrFetcher, updateSettings } from '@/lib/api';
+import type { AppSettings } from '@/lib/types';
 import { fmtDateTime } from '@/lib/date';
 
 interface TokenClaims {
@@ -54,14 +58,31 @@ export default function SettingsView() {
   const { message } = App.useApp();
   const { status, isLoading, isError } = useStatus();
   const [form] = Form.useForm<{ apiUrl: string }>();
+  const [retentionForm] = Form.useForm<{ retention_days: number }>();
   const [connectionCheck, setConnectionCheck] = useState<'idle' | 'success' | 'error'>('idle');
   const [checkingConnection, setCheckingConnection] = useState(false);
+  const [savingRetention, setSavingRetention] = useState(false);
   const [browserDefaultApiUrl, setBrowserDefaultApiUrl] = useState('http://localhost:9746');
   const [currentApiUrl, setCurrentApiUrl] = useState('http://localhost:9746');
   const [storedApiUrl, setStoredApiUrl] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [claims, setClaims] = useState<TokenClaims | null>(null);
   const [origin, setOrigin] = useState('Unknown');
+
+  const {
+    data: settings,
+    error: settingsError,
+    isLoading: settingsLoading,
+    mutate: mutateSettings,
+  } = useSWR<AppSettings>('/api/v1/settings', swrFetcher, {
+    revalidateOnFocus: false,
+  });
+
+  useEffect(() => {
+    if (settings?.retention_days !== undefined) {
+      retentionForm.setFieldsValue({ retention_days: settings.retention_days });
+    }
+  }, [settings?.retention_days, retentionForm]);
 
   const expiryLabel = claims?.exp ? fmtDateTime(claims.exp * 1000) : 'Unknown';
 
@@ -121,6 +142,21 @@ export default function SettingsView() {
     setToken(null);
     setClaims(null);
     router.push('/login');
+  };
+
+  const handleSaveRetention = async () => {
+    const values = await retentionForm.validateFields();
+    setSavingRetention(true);
+    try {
+      const updated = await updateSettings({ retention_days: values.retention_days });
+      await mutateSettings(updated, { revalidate: false });
+      message.success(`Logs older than ${updated.retention_days} day(s) will be auto-deleted`);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : 'Failed to save settings';
+      message.error(detail);
+    } finally {
+      setSavingRetention(false);
+    }
   };
 
   return (
@@ -189,6 +225,48 @@ export default function SettingsView() {
               message="Could not reach the health endpoint for that API URL"
             />
           )}
+        </Card>
+
+        <Card title="Log Retention">
+          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+            Job runs and their captured stdout/stderr older than this many days are deleted
+            automatically. The pruner runs once on daemon startup and then every 24 hours.
+          </Typography.Text>
+          {settingsError ? (
+            <Alert
+              type="error"
+              showIcon
+              message="Could not load retention setting"
+              style={{ marginBottom: 16 }}
+            />
+          ) : null}
+          <Form form={retentionForm} layout="vertical" disabled={settingsLoading}>
+            <Form.Item
+              name="retention_days"
+              label="Retention (days)"
+              rules={[
+                { required: true, message: 'Retention is required' },
+                {
+                  type: 'number',
+                  min: 1,
+                  max: 3650,
+                  message: 'Must be between 1 and 3650 days',
+                },
+              ]}
+            >
+              <InputNumber min={1} max={3650} style={{ width: 200 }} />
+            </Form.Item>
+          </Form>
+          <Space wrap>
+            <Button type="primary" onClick={handleSaveRetention} loading={savingRetention}>
+              Save
+            </Button>
+          </Space>
+          <Descriptions column={1} size="small" style={{ marginTop: 16 }}>
+            <Descriptions.Item label="Currently">
+              {settings ? `${settings.retention_days} day(s)` : settingsLoading ? '…' : 'Unknown'}
+            </Descriptions.Item>
+          </Descriptions>
         </Card>
 
         <Row gutter={[16, 16]}>

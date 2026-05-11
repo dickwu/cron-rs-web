@@ -12,6 +12,8 @@ import type {
   UpdateHookPayload,
   LoginPayload,
   LoginResponse,
+  AppSettings,
+  UpdateSettingsPayload,
 } from './types';
 
 class ApiError extends Error {
@@ -183,6 +185,18 @@ export async function getSchedulePreview(
   return fetchApi<string[]>(
     `/api/v1/schedule/preview?expr=${encodeURIComponent(expr)}&count=${count}`
   );
+}
+
+// Settings
+export async function getSettings(): Promise<AppSettings> {
+  return fetchApi<AppSettings>('/api/v1/settings');
+}
+
+export async function updateSettings(payload: UpdateSettingsPayload): Promise<AppSettings> {
+  return fetchApi<AppSettings>('/api/v1/settings', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 }
 
 // Fetcher for SWR
