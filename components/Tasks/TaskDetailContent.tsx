@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Typography,
   Card,
@@ -30,6 +30,7 @@ import { useRuns } from '@/hooks/useRuns';
 import { deleteTask, triggerTask, enableTask, disableTask } from '@/lib/api';
 import { describeSchedule } from '@/lib/schedule';
 import { fmtDateTime } from '@/lib/date';
+import { currentPathWithSearch, hrefWithReturnTo, returnToOrFallback } from '@/lib/navigation';
 import type { JobRun } from '@/lib/types';
 
 interface TaskDetailContentProps {
@@ -49,6 +50,9 @@ export function TaskDetailContent({
   onRunClick,
 }: TaskDetailContentProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnTo = currentPathWithSearch(pathname, searchParams);
   const { task, isLoading, mutate } = useTask(taskId);
   const { runs, isLoading: runsLoading } = useRuns({ task_id: taskId, limit: 50 });
   const [editOpen, setEditOpen] = useState(false);
@@ -60,7 +64,7 @@ export function TaskDetailContent({
       if (onDeleted) {
         onDeleted();
       } else {
-        router.push('/tasks');
+        router.replace(returnToOrFallback(searchParams, '/tasks'));
       }
     } catch {
       message.error('Failed to delete task');
@@ -241,7 +245,7 @@ export function TaskDetailContent({
               onRow={(record) => ({
                 onClick: () => {
                   if (onRunClick) onRunClick(record.id);
-                  else router.push(`/runs?id=${record.id}`);
+                  else router.push(hrefWithReturnTo(`/runs?id=${record.id}`, returnTo));
                 },
                 style: { cursor: 'pointer' },
               })}

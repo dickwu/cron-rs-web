@@ -9,10 +9,11 @@ import {
   CheckCircleOutlined,
   StopOutlined,
 } from '@ant-design/icons';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { deleteTask, enableTask, disableTask, triggerTask } from '@/lib/api';
 import { BulkActions } from './BulkActions';
 import { describeSchedule } from '@/lib/schedule';
+import { currentPathWithSearch, hrefWithReturnTo } from '@/lib/navigation';
 import type { Task } from '@/lib/types';
 
 interface TaskTableProps {
@@ -24,6 +25,9 @@ interface TaskTableProps {
 
 export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnTo = currentPathWithSearch(pathname, searchParams);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -213,7 +217,7 @@ export function TaskTable({ tasks, loading, onEdit, onRefresh }: TaskTableProps)
           onChange: setSelectedRowKeys,
         }}
         onRow={(record) => ({
-          onClick: () => router.push(`/tasks?id=${record.id}`),
+          onClick: () => router.push(hrefWithReturnTo(`/tasks?id=${record.id}`, returnTo)),
           style: { cursor: 'pointer' },
         })}
         pagination={{

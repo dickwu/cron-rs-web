@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { TaskDetailContent } from '@/components/Tasks/TaskDetailContent';
+import { returnToOrFallback } from '@/lib/navigation';
 
 interface TaskDetailViewProps {
   taskId: string;
@@ -13,20 +14,15 @@ interface TaskDetailViewProps {
 
 export default function TaskDetailView({ taskId }: TaskDetailViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.replace('/tasks');
-  };
+  const handleBack = () => router.replace(returnToOrFallback(searchParams, '/tasks'));
 
   return (
     <AppLayout>
       <div style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={handleBack} />
+          <Button aria-label="Back" icon={<ArrowLeftOutlined />} onClick={handleBack} />
         </Space>
       </div>
       <TaskDetailContent taskId={taskId} />

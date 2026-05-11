@@ -11,10 +11,11 @@ import {
   WarningOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useRuns } from '@/hooks/useRuns';
 import { useTasks } from '@/hooks/useTasks';
 import { fmtDateTime } from '@/lib/date';
+import { currentPathWithSearch, hrefWithReturnTo } from '@/lib/navigation';
 import type { JobRun, Task } from '@/lib/types';
 
 const statusConfig: Record<
@@ -43,8 +44,11 @@ export { StatusBadge };
 
 export function RecentRuns() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { runs, isLoading, isError } = useRuns({ limit: 20 });
   const { tasks } = useTasks();
+  const returnTo = currentPathWithSearch(pathname, searchParams);
   const taskMap = useMemo<Record<string, Task>>(() => {
     const map: Record<string, Task> = {};
     for (const task of tasks) map[task.id] = task;
@@ -139,7 +143,7 @@ export function RecentRuns() {
         pagination={false}
         size="small"
         onRow={(record) => ({
-          onClick: () => router.push(`/runs?id=${record.id}`),
+          onClick: () => router.push(hrefWithReturnTo(`/runs?id=${record.id}`, returnTo)),
           style: { cursor: 'pointer' },
         })}
       />

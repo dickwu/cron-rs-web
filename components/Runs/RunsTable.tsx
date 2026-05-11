@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { Table, Tooltip } from 'antd';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
 import { fmtDateTime } from '@/lib/date';
+import { currentPathWithSearch, hrefWithReturnTo } from '@/lib/navigation';
 import type { JobRun, Task } from '@/lib/types';
 
 interface RunsTableProps {
@@ -21,6 +22,9 @@ interface RunsTableProps {
 
 export function RunsTable({ runs, loading, taskMap, pagination }: RunsTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnTo = currentPathWithSearch(pathname, searchParams);
 
   const columns = [
     {
@@ -99,7 +103,7 @@ export function RunsTable({ runs, loading, taskMap, pagination }: RunsTableProps
       }
       size="middle"
       onRow={(record) => ({
-        onClick: () => router.push(`/runs?id=${record.id}`),
+        onClick: () => router.push(hrefWithReturnTo(`/runs?id=${record.id}`, returnTo)),
         style: { cursor: 'pointer' },
       })}
     />

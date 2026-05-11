@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/Layout/AppLayout';
 import { useTasks } from '@/hooks/useTasks';
 import { swrFetcher } from '@/lib/api';
 import { hookTypeLabels } from '@/lib/hooks';
+import { hrefWithReturnTo } from '@/lib/navigation';
 import {
   Alert,
   Button,
@@ -195,7 +196,12 @@ export default function HookListView() {
             rowKey="id"
             pagination={{ pageSize: 20, showSizeChanger: true }}
             onRow={(hook) => ({
-              onClick: () => router.push(hook.task_id ? `/tasks?id=${hook.task_id}` : '/settings'),
+              onClick: () =>
+                router.push(
+                  hook.task_id
+                    ? hrefWithReturnTo(`/tasks?id=${hook.task_id}`, '/hooks')
+                    : '/settings'
+                ),
               style: { cursor: 'pointer' },
             })}
           />
