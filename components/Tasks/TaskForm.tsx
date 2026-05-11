@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Alert, Drawer, Form, Input, InputNumber, Select, Button, Space, message, Typography } from 'antd';
+import { Alert, Drawer, Form, Input, InputNumber, Select, Button, Space, message, Typography, Tooltip } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import { createTask, updateTask } from '@/lib/api';
 import { describeSchedule, getImportedCronExpression, normalizeScheduleExpression } from '@/lib/schedule';
 import { normalizeTags } from '@/lib/tags';
@@ -40,6 +41,8 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
         retry_delay_secs: task.retry_delay_secs,
         timeout_secs: task.timeout_secs,
         concurrency_policy: task.concurrency_policy,
+        lock_key: task.lock_key,
+        sandbox_profile: task.sandbox_profile,
       });
     } else if (open) {
       form.resetFields();
@@ -47,6 +50,8 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
         max_retries: 0,
         retry_delay_secs: 60,
         concurrency_policy: 'skip',
+        lock_key: null,
+        sandbox_profile: null,
         tags: [],
       });
     }
@@ -59,6 +64,8 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
         ...values,
         schedule: normalizeScheduleExpression(values.schedule),
         tags: normalizeTags(values.tags),
+        lock_key: values.lock_key?.trim() || null,
+        sandbox_profile: values.sandbox_profile || null,
       };
       if (isEditing && task) {
         await updateTask(task.id, payload);
@@ -178,6 +185,36 @@ export function TaskFormDrawer({ open, onClose, onSuccess, task }: TaskFormDrawe
             <Option value="skip">Skip</Option>
             <Option value="allow">Allow</Option>
             <Option value="queue">Queue</Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          name="lock_key"
+          label={
+            <Space size={4}>
+              <span>Lock Key</span>
+              <Tooltip title="Optional shared flock key. Tasks with the same key use /run/cron-rs/locks/<key>.lock to avoid overlapping boot phases.">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </Space>
+          }
+        >
+          <Input placeholder="staff-api-boot" disabled={loading} allowClear />
+        </Form.Item>
+
+        <Form.Item
+          name="sandbox_profile"
+          label={
+            <Space size={4}>
+              <span>Sandbox Profile</span>
+              <Tooltip title="Optional systemd sandbox profile. staff-api-hyperf limits filesystem writes while allowing cron-rs DB, lock files, and staff-api runtime cache.">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </Space>
+          }
+        >
+          <Select disabled={loading} allowClear placeholder="No sandbox">
+            <Option value="staff-api-hyperf">staff-api-hyperf</Option>
           </Select>
         </Form.Item>
       </Form>

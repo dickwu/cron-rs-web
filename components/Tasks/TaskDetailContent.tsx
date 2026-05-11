@@ -200,6 +200,10 @@ export function TaskDetailContent({
             </Space>
           </Descriptions.Item>
           <Descriptions.Item label="Concurrency">{task.concurrency_policy}</Descriptions.Item>
+          <Descriptions.Item label="Lock Key">{task.lock_key || 'None'}</Descriptions.Item>
+          <Descriptions.Item label="Sandbox">
+            {task.sandbox_profile || 'None'}
+          </Descriptions.Item>
           <Descriptions.Item label="Max Retries">{task.max_retries}</Descriptions.Item>
           <Descriptions.Item label="Retry Delay">{task.retry_delay_secs}s</Descriptions.Item>
           <Descriptions.Item label="Timeout">

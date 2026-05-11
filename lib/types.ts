@@ -10,6 +10,8 @@ export interface Task {
   retry_delay_secs: number;
   timeout_secs: number | null;
   concurrency_policy: 'skip' | 'allow' | 'queue';
+  lock_key: string | null;
+  sandbox_profile: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -84,6 +86,8 @@ export interface CreateTaskPayload {
   retry_delay_secs?: number;
   timeout_secs?: number | null;
   concurrency_policy?: 'skip' | 'allow' | 'queue';
+  lock_key?: string | null;
+  sandbox_profile?: string | null;
 }
 
 export interface UpdateTaskPayload extends Partial<CreateTaskPayload> {
