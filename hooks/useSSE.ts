@@ -4,14 +4,17 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSWRConfig } from 'swr';
 import { getToken, clearToken, getApiUrl } from '@/lib/auth';
 import { message } from 'antd';
+import { useTasks } from '@/hooks/useTasks';
 import type { SSEEventType } from '@/lib/types';
 
 type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 export function useSSE() {
   const { mutate } = useSWRConfig();
+  const { tasks } = useTasks();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const statusRef = useRef<ConnectionStatus>('disconnected');
+  const taskNameByIdRef = useRef<Record<string, string>>({});
   const retryCountRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -19,6 +22,42 @@ export function useSSE() {
   const setStatus = useCallback((status: ConnectionStatus) => {
     statusRef.current = status;
     setConnectionStatus(status);
+  }, []);
+
+  useEffect(() => {
+    const nextMap: Record<string, string> = {};
+    for (const task of tasks) nextMap[task.id] = task.name;
+    taskNameByIdRef.current = nextMap;
+  }, [tasks]);
+
+  const resolveTaskName = useCallback(async (taskId?: string | null) => {
+    if (!taskId) return 'unknown';
+
+    const cachedName = taskNameByIdRef.current[taskId];
+    if (cachedName) return cachedName;
+
+    const token = getToken();
+    if (!token) return taskId;
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/v1/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return taskId;
+
+      const task = await res.json();
+      if (typeof task?.name === 'string' && task.name.trim()) {
+        taskNameByIdRef.current = {
+          ...taskNameByIdRef.current,
+          [taskId]: task.name,
+        };
+        return task.name;
+      }
+    } catch {
+      // Fall through to the stable identifier if the lookup fails.
+    }
+
+    return taskId;
   }, []);
 
   const invalidateCaches = useCallback(
@@ -101,7 +140,8 @@ export function useSSE() {
             if (eventType === 'run_failed') {
               try {
                 const data = JSON.parse(line.slice(6));
-                message.warning(`Run failed for task: ${data.run?.task_id || 'unknown'}`);
+                const taskName = await resolveTaskName(data.run?.task_id);
+                message.warning(`Run failed for task: ${taskName}`);
               } catch {
                 message.warning('A task run has failed');
               }
@@ -127,7 +167,7 @@ export function useSSE() {
         reconnectTimerRef.current = setTimeout(connect, delay);
       }
     }
-  }, [invalidateCaches, setStatus]);
+  }, [invalidateCaches, resolveTaskName, setStatus]);
 
   useEffect(() => {
     connect();
