@@ -1,111 +1,105 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Form, Input, Button, Typography, message } from 'antd';
-import { LockOutlined, UserOutlined, ApiOutlined } from '@ant-design/icons';
+import { Icon } from '@/components/ui/icons';
+import { Toaster, toast } from '@/components/ui/Toaster';
 import { login } from '@/lib/api';
 import { setToken, setApiUrl, getApiUrl } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
+  const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState('http://localhost:9746');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
-    form.setFieldsValue({ apiUrl: getApiUrl() });
-  }, [form]);
+    setUrl(getApiUrl());
+  }, []);
 
-  const handleSubmit = async (values: {
-    apiUrl: string;
-    username: string;
-    password: string;
-  }) => {
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
     try {
-      setApiUrl(values.apiUrl);
-      const res = await login({
-        username: values.username,
-        password: values.password,
-      });
+      setApiUrl(url);
+      const res = await login({ username, password });
       setToken(res.token);
-      message.success('Login successful');
+      toast('Login successful', 'success');
       router.push('/');
-    } catch (err: unknown) {
+    } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed';
-      message.error(msg === 'Unauthorized' ? 'Invalid credentials' : msg);
+      toast(msg === 'Unauthorized' ? 'Invalid credentials' : msg, 'error');
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
   return (
-    <div className="login-container">
+    <div className="login-shell">
       <div className="login-card">
-        <Card>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <Typography.Title level={2} style={{ marginBottom: 4 }}>
-              cron-rs
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              Systemd timer management dashboard
-            </Typography.Text>
-          </div>
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            autoComplete="off"
+        <div className="login-mark">
+          <Icon.logo size={22} />
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>
+          Sign in to cron-rs
+        </div>
+        <div className="muted fz-13 mt-2 mb-5">
+          Systemd timer management · web dashboard
+        </div>
+        <form onSubmit={handleSubmit}>
+          <label className="field">
+            <div className="label-row">
+              <span className="label">API URL</span>
+            </div>
+            <input
+              className="input mono"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              disabled={busy}
+              placeholder="http://localhost:9746"
+            />
+          </label>
+          <label className="field">
+            <div className="label-row">
+              <span className="label">Username</span>
+            </div>
+            <input
+              className="input"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={busy}
+              autoComplete="username"
+              placeholder="admin"
+            />
+          </label>
+          <label className="field">
+            <div className="label-row">
+              <span className="label">Password</span>
+            </div>
+            <input
+              className="input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={busy}
+              autoComplete="current-password"
+              placeholder="Password"
+            />
+          </label>
+          <button
+            className="btn primary"
+            type="submit"
+            disabled={busy}
+            style={{ width: '100%', height: 36 }}
           >
-            <Form.Item
-              name="apiUrl"
-              label="API URL"
-              rules={[{ required: true, message: 'API URL is required' }]}
-            >
-              <Input
-                prefix={<ApiOutlined />}
-                placeholder="http://localhost:9746"
-                disabled={loading}
-              />
-            </Form.Item>
-            <Form.Item
-              name="username"
-              label="Username"
-              rules={[{ required: true, message: 'Username is required' }]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="admin"
-                disabled={loading}
-                autoComplete="username"
-              />
-            </Form.Item>
-            <Form.Item
-              name="password"
-              label="Password"
-              rules={[{ required: true, message: 'Password is required' }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="Password"
-                disabled={loading}
-                autoComplete="current-password"
-              />
-            </Form.Item>
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={loading}
-                block
-                size="large"
-              >
-                Sign In
-              </Button>
-            </Form.Item>
-          </Form>
-        </Card>
+            {busy ? <Icon.spinner size={14} /> : null}
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+        <div className="mt-4 muted fz-11 text-right">cron-rs-web · v0.3.0</div>
       </div>
+      <Toaster />
     </div>
   );
 }

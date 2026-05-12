@@ -16,6 +16,11 @@ export interface Task {
   updated_at: string;
 }
 
+export type TaskSummary = Pick<
+  Task,
+  'id' | 'name' | 'schedule' | 'tags' | 'enabled' | 'updated_at'
+>;
+
 export interface Hook {
   id: string;
   task_id: string | null;
@@ -97,6 +102,12 @@ export interface DashboardActivity {
   success_rate: number | null;
   top_tasks: DashboardTaskBreakdown[];
   failed_runs: DashboardRunSummary[];
+}
+
+export interface TaskDetailResponse {
+  task: Task;
+  hooks: Hook[];
+  runs: JobRunSummary[];
 }
 
 export interface HookRun {

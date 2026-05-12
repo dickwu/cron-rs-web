@@ -1,67 +1,123 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { Typography, Button, Space, Row, Col } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { AppLayout } from '@/components/Layout/AppLayout';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useSWRConfig } from 'swr';
+import { AppShell } from '@/components/Layout/AppShell';
+import { Icon } from '@/components/ui/icons';
+import { toast } from '@/components/ui/Toaster';
 import { StatsCards } from '@/components/Dashboard/StatsCards';
-import { RunChart } from '@/components/Dashboard/RunChart';
-import { RecentRuns } from '@/components/Dashboard/RecentRuns';
+import { ChartCard } from '@/components/Dashboard/ChartCard';
+import { Upcoming } from '@/components/Dashboard/Upcoming';
+import { RecentRunsCard } from '@/components/Dashboard/RecentRuns';
+import { RecentFailures } from '@/components/Dashboard/RecentFailures';
+import { HeatmapCard } from '@/components/Dashboard/HeatmapCard';
+import { TopTasksCard } from '@/components/Dashboard/TopTasks';
+import { EmptyState } from '@/components/Dashboard/EmptyState';
+import { TaskFormDrawer } from '@/components/Tasks/TaskFormDrawer';
 import { useDashboardSummary } from '@/hooks/useDashboard';
-import { TaskFormDrawer } from '@/components/Tasks/TaskForm';
-import { useDashboardStore } from '@/stores/dashboardStore';
 
-export default function DashboardPage() {
+function DashboardInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  const { mutate } = useSWRConfig();
   const { summary } = useDashboardSummary();
-  const drawerOpen = useDashboardStore((state) => state.taskDrawerOpen);
-  const setDrawerOpen = useDashboardStore((state) => state.setTaskDrawerOpen);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (params.get('new') === '1') setDrawerOpen(true);
+  }, [params]);
 
   const hasTasks = (summary?.task_count ?? 0) > 0;
 
-  const handleCreateTask = () => {
-    setDrawerOpen(true);
-  };
-
-  const handleTaskCreated = () => {
+  const handleSuccess = () => {
     setDrawerOpen(false);
+    mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/'));
     router.push('/tasks');
   };
 
+  const header = {
+    crumbs: [{ label: 'Dashboard' as const }],
+    actions: (
+      <>
+        <button
+          className="btn"
+          onClick={() => {
+            mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/'));
+            toast('Refreshed', 'info');
+          }}
+        >
+          <Icon.refresh size={13} /> Refresh
+        </button>
+        <button className="btn primary" onClick={() => setDrawerOpen(true)}>
+          <Icon.plus size={13} /> New task
+        </button>
+      </>
+    ),
+  };
+
   return (
-    <AppLayout>
-      <div style={{ marginBottom: 24 }}>
-        <Space style={{ width: '100%', justifyContent: 'space-between', display: 'flex' }}>
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            Dashboard
-          </Typography.Title>
-          {hasTasks && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateTask}>
-              New Task
-            </Button>
-          )}
-        </Space>
-      </div>
+    <AppShell header={header}>
+      {!summary ? null : !hasTasks ? (
+        <EmptyState onCreate={() => setDrawerOpen(true)} />
+      ) : (
+        <>
+          <div className="page-header">
+            <div>
+              <div className="page-title">Dashboard</div>
+              <div className="page-subtitle">
+                Live monitoring · {summary.task_count} task
+                {summary.task_count === 1 ? '' : 's'} · {summary.active_timers} timer
+                {summary.active_timers === 1 ? '' : 's'} active
+              </div>
+            </div>
+          </div>
 
-      <StatsCards onCreateTask={handleCreateTask} />
+          <StatsCards />
 
-      {hasTasks && (
-        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-          <Col xs={24} xl={12}>
-            <RunChart />
-          </Col>
-          <Col xs={24} xl={12}>
-            <RecentRuns />
-          </Col>
-        </Row>
+          <div className="grid-2 mb-4">
+            <ChartCard />
+            <Upcoming />
+          </div>
+
+          <div className="grid-2 mb-4">
+            <RecentRunsCard />
+            <RecentFailures />
+          </div>
+
+          <div className="grid-2 mb-4">
+            <HeatmapCard />
+            <TopTasksCard />
+          </div>
+        </>
       )}
 
       <TaskFormDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onSuccess={handleTaskCreated}
+        onSuccess={handleSuccess}
       />
-    </AppLayout>
+    </AppShell>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            padding: 80,
+            color: 'var(--text-muted)',
+          }}
+        >
+          <Icon.spinner size={22} />
+        </div>
+      }
+    >
+      <DashboardInner />
+    </Suspense>
   );
 }

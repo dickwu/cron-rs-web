@@ -1,6 +1,8 @@
 import { getToken, clearToken, getApiUrl } from './auth';
 import type {
   Task,
+  TaskDetailResponse,
+  TaskSummary,
   Hook,
   JobRun,
   HookRun,
@@ -72,12 +74,16 @@ export async function getStatus(): Promise<StatusResponse> {
 }
 
 // Tasks
-export async function getTasks(): Promise<Task[]> {
-  return fetchApi<Task[]>('/api/v1/tasks');
+export async function getTasks(): Promise<TaskSummary[]> {
+  return fetchApi<TaskSummary[]>('/api/v1/tasks');
 }
 
 export async function getTask(id: string): Promise<Task> {
   return fetchApi<Task>(`/api/v1/tasks/${id}`);
+}
+
+export async function getTaskDetail(id: string): Promise<TaskDetailResponse> {
+  return fetchApi<TaskDetailResponse>(`/api/v1/tasks/${id}/detail`);
 }
 
 export async function createTask(payload: CreateTaskPayload): Promise<Task> {
@@ -119,6 +125,7 @@ export async function getRuns(params?: {
   since?: string;
 }): Promise<JobRun[]> {
   const searchParams = new URLSearchParams();
+  searchParams.set('include_output', 'true');
   if (params?.task_id) searchParams.set('task_id', params.task_id);
   if (params?.status) searchParams.set('status', params.status);
   if (params?.limit) searchParams.set('limit', String(params.limit));

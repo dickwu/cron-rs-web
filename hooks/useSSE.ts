@@ -3,15 +3,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSWRConfig } from 'swr';
 import { getToken, clearToken, getApiUrl } from '@/lib/auth';
-import { message } from 'antd';
-import { useTasks } from '@/hooks/useTasks';
+import { toast } from '@/components/ui/Toaster';
 import type { SSEEventType } from '@/lib/types';
 
 type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 export function useSSE() {
   const { mutate } = useSWRConfig();
-  const { tasks } = useTasks();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const statusRef = useRef<ConnectionStatus>('disconnected');
   const taskNameByIdRef = useRef<Record<string, string>>({});
@@ -23,12 +21,6 @@ export function useSSE() {
     statusRef.current = status;
     setConnectionStatus(status);
   }, []);
-
-  useEffect(() => {
-    const nextMap: Record<string, string> = {};
-    for (const task of tasks) nextMap[task.id] = task.name;
-    taskNameByIdRef.current = nextMap;
-  }, [tasks]);
 
   const resolveTaskName = useCallback(async (taskId?: string | null) => {
     if (!taskId) return 'unknown';
@@ -68,25 +60,26 @@ export function useSSE() {
         case 'task_deleted':
         case 'task_enabled':
         case 'task_disabled':
-          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/tasks'), undefined, { revalidate: true });
+          taskNameByIdRef.current = {};
+          mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/tasks'), undefined, { revalidate: true });
           mutate('/api/v1/status', undefined, { revalidate: true });
-          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/dashboard'), undefined, { revalidate: true });
+          mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/dashboard'), undefined, { revalidate: true });
           break;
         case 'run_started':
         case 'run_completed':
         case 'run_failed':
-          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/runs'), undefined, { revalidate: true });
+          mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/runs'), undefined, { revalidate: true });
           mutate('/api/v1/status', undefined, { revalidate: true });
-          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/dashboard'), undefined, { revalidate: true });
+          mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/dashboard'), undefined, { revalidate: true });
           break;
         case 'hook_fired':
-          mutate((key: string) => typeof key === 'string' && key.includes('/hooks'), undefined, { revalidate: true });
+          mutate((key) => typeof key === 'string' && key.includes('/hooks'), undefined, { revalidate: true });
           break;
         case 'heartbeat':
           break;
       }
     },
-    [mutate]
+    [mutate],
   );
 
   const connect = useCallback(async () => {
@@ -143,9 +136,9 @@ export function useSSE() {
               try {
                 const data = JSON.parse(line.slice(6));
                 const taskName = await resolveTaskName(data.run?.task_id);
-                message.warning(`Run failed for task: ${taskName}`);
+                toast(`Run failed for task: ${taskName}`, 'error');
               } catch {
-                message.warning('A task run has failed');
+                toast('A task run has failed', 'error');
               }
             }
 

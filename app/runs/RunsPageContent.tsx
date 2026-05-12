@@ -2,16 +2,21 @@
 
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
-import RunListView from './RunListView';
-import RunDetailViewPage from './RunDetailViewPage';
+import { AppShell } from '@/components/Layout/AppShell';
+import { RunsListView } from '@/components/Runs/RunsListView';
+import { RunDetailView } from '@/components/Runs/RunDetailView';
 
 export default function RunsPageContent() {
-  const searchParams = useSearchParams();
-  const runId = searchParams.get('id');
+  const params = useSearchParams();
+  const runId = params.get('id');
 
-  if (runId) {
-    return <RunDetailViewPage runId={runId} />;
-  }
+  const header = runId
+    ? { crumbs: [{ label: 'Runs', href: '/runs' }, { label: runId }] }
+    : { crumbs: [{ label: 'Runs' }] };
 
-  return <RunListView />;
+  return (
+    <AppShell header={header}>
+      {runId ? <RunDetailView runId={runId} /> : <RunsListView />}
+    </AppShell>
+  );
 }

@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/api';
-import type { Task } from '@/lib/types';
+import type { Task, TaskDetailResponse, TaskSummary } from '@/lib/types';
 
 const TASK_SWR_CONFIG = {
   keepPreviousData: true,
@@ -11,7 +11,7 @@ const TASK_SWR_CONFIG = {
 };
 
 export function useTasks() {
-  const { data, error, isLoading, mutate } = useSWR<Task[]>(
+  const { data, error, isLoading, mutate } = useSWR<TaskSummary[]>(
     '/api/v1/tasks',
     swrFetcher,
     { ...TASK_SWR_CONFIG, refreshInterval: 30000 }
@@ -35,6 +35,22 @@ export function useTask(id: string | null) {
 
   return {
     task: data,
+    isLoading: isLoading && !data,
+    isError: !!error,
+    error,
+    mutate,
+  };
+}
+
+export function useTaskDetail(id: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<TaskDetailResponse>(
+    id ? `/api/v1/tasks/${id}/detail` : null,
+    swrFetcher,
+    { ...TASK_SWR_CONFIG, refreshInterval: 15000 }
+  );
+
+  return {
+    detail: data,
     isLoading: isLoading && !data,
     isError: !!error,
     error,

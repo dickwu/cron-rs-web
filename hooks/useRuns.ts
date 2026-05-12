@@ -18,6 +18,7 @@ export function useRuns(params?: {
   since?: string;
 }) {
   const searchParams = new URLSearchParams();
+  searchParams.set('include_output', 'true');
   if (params?.task_id) searchParams.set('task_id', params.task_id);
   if (params?.status) searchParams.set('status', params.status);
   if (params?.limit) searchParams.set('limit', String(params.limit));

@@ -9,3 +9,4 @@ server/target
 
 # Playwright local test artifacts
 .playwright-cli/
+*.tsbuildinfo

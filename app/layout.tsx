@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
-import { AntdRegistry } from '@ant-design/nextjs-registry';
-import { ThemeProvider } from '@/components/Layout/ThemeProvider';
+import { ThemeBoot } from '@/components/Layout/ThemeBoot';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'cron-rs Dashboard',
+  title: 'cron-rs · dashboard',
   description: 'Web dashboard for cron-rs systemd timer management',
 };
 
@@ -15,16 +14,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" data-density="comfortable">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap"
+        />
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
       </head>
       <body>
-        <AntdRegistry>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
-        </AntdRegistry>
+        <ThemeBoot />
+        {children}
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-import type { Task } from './types';
+import type { TaskSummary } from './types';
 
 export function normalizeTags(tags?: string[] | null): string[] {
   const seen = new Set<string>();
@@ -18,13 +18,13 @@ export function normalizeTags(tags?: string[] | null): string[] {
   return normalized;
 }
 
-export function collectTaskTags(tasks: Task[]): string[] {
+export function collectTaskTags(tasks: TaskSummary[]): string[] {
   return normalizeTags(tasks.flatMap((task) => task.tags || [])).sort((a, b) =>
     a.localeCompare(b)
   );
 }
 
-export function taskMatchesTags(task: Task, selectedTags: string[]): boolean {
+export function taskMatchesTags(task: TaskSummary, selectedTags: string[]): boolean {
   if (selectedTags.length === 0) return true;
 
   const taskTags = new Set((task.tags || []).map((tag) => tag.toLowerCase()));
