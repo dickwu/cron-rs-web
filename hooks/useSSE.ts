@@ -70,12 +70,14 @@ export function useSSE() {
         case 'task_disabled':
           mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/tasks'), undefined, { revalidate: true });
           mutate('/api/v1/status', undefined, { revalidate: true });
+          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/dashboard'), undefined, { revalidate: true });
           break;
         case 'run_started':
         case 'run_completed':
         case 'run_failed':
           mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/runs'), undefined, { revalidate: true });
           mutate('/api/v1/status', undefined, { revalidate: true });
+          mutate((key: string) => typeof key === 'string' && key.startsWith('/api/v1/dashboard'), undefined, { revalidate: true });
           break;
         case 'hook_fired':
           mutate((key: string) => typeof key === 'string' && key.includes('/hooks'), undefined, { revalidate: true });

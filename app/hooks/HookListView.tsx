@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { useTasks } from '@/hooks/useTasks';
 import { swrFetcher } from '@/lib/api';
 import { hookTypeLabels } from '@/lib/hooks';
 import { hrefWithReturnTo } from '@/lib/navigation';
+import { useUiStore } from '@/stores/uiStore';
 import {
   Alert,
   Button,
@@ -29,9 +30,15 @@ export default function HookListView() {
   const { data: hooks, error: hooksError, isLoading: hooksLoading } = useSWR<Hook[]>(
     '/api/v1/hooks',
     swrFetcher,
-    { refreshInterval: 15000, revalidateOnFocus: true }
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: false,
+      keepPreviousData: true,
+      dedupingInterval: 2000,
+    }
   );
-  const [query, setQuery] = useState('');
+  const query = useUiStore((state) => state.hooksQuery);
+  const setQuery = useUiStore((state) => state.setHooksQuery);
 
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
 
@@ -118,7 +125,7 @@ export default function HookListView() {
     },
   ];
 
-  if (isLoading || hooksLoading) {
+  if ((isLoading && tasks.length === 0) || (hooksLoading && !hooks)) {
     return (
       <AppLayout>
         <Skeleton active paragraph={{ rows: 10 }} />
@@ -126,7 +133,7 @@ export default function HookListView() {
     );
   }
 
-  if (isError || hooksError) {
+  if ((isError && tasks.length === 0) || (hooksError && !hooks)) {
     return (
       <AppLayout>
         <Alert

@@ -6,10 +6,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
 import { fmtDateTime } from '@/lib/date';
 import { currentPathWithSearch, hrefWithReturnTo } from '@/lib/navigation';
-import type { JobRun, Task } from '@/lib/types';
+import type { JobRun, JobRunSummary, Task } from '@/lib/types';
 
 interface RunsTableProps {
-  runs: JobRun[];
+  runs: Array<JobRun | JobRunSummary>;
   loading: boolean;
   taskMap?: Record<string, Task>;
   pagination?: {

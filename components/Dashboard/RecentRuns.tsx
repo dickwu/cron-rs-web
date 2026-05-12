@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card, Table, Tag, Tooltip, Typography, Skeleton } from 'antd';
 import {
   CheckCircleOutlined,
@@ -12,11 +12,10 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useRuns } from '@/hooks/useRuns';
-import { useTasks } from '@/hooks/useTasks';
+import { useDashboardRecentRuns } from '@/hooks/useDashboard';
 import { fmtDateTime } from '@/lib/date';
 import { currentPathWithSearch, hrefWithReturnTo } from '@/lib/navigation';
-import type { JobRun, Task } from '@/lib/types';
+import type { DashboardRunSummary, JobRun } from '@/lib/types';
 
 const statusConfig: Record<
   JobRun['status'],
@@ -46,28 +45,20 @@ export function RecentRuns() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { runs, isLoading, isError } = useRuns({ limit: 20 });
-  const { tasks } = useTasks();
+  const { runs, isLoading, isError } = useDashboardRecentRuns(20);
   const returnTo = currentPathWithSearch(pathname, searchParams);
-  const taskMap = useMemo<Record<string, Task>>(() => {
-    const map: Record<string, Task> = {};
-    for (const task of tasks) map[task.id] = task;
-    return map;
-  }, [tasks]);
 
   const columns = [
     {
       title: 'Task',
-      dataIndex: 'task_id',
       key: 'task_id',
       ellipsis: true,
       width: 200,
-      render: (taskId: string) => {
-        const task = taskMap[taskId];
-        if (!task) return <span className="mono">{taskId}</span>;
+      render: (_: unknown, run: DashboardRunSummary) => {
+        if (!run.task_name) return <span className="mono">{run.task_id}</span>;
         return (
-          <Tooltip title={taskId}>
-            <span>{task.name}</span>
+          <Tooltip title={run.task_id}>
+            <span>{run.task_name}</span>
           </Tooltip>
         );
       },
@@ -116,7 +107,7 @@ export function RecentRuns() {
     );
   }
 
-  if (isError) {
+  if (isError && runs.length === 0) {
     return (
       <Card title="Recent Runs">
         <Typography.Text type="danger">Could not load recent runs</Typography.Text>

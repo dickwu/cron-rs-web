@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Typography, Button, Space, Row, Col } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
@@ -8,15 +8,17 @@ import { AppLayout } from '@/components/Layout/AppLayout';
 import { StatsCards } from '@/components/Dashboard/StatsCards';
 import { RunChart } from '@/components/Dashboard/RunChart';
 import { RecentRuns } from '@/components/Dashboard/RecentRuns';
-import { useStatus } from '@/hooks/useRuns';
+import { useDashboardSummary } from '@/hooks/useDashboard';
 import { TaskFormDrawer } from '@/components/Tasks/TaskForm';
+import { useDashboardStore } from '@/stores/dashboardStore';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { status } = useStatus();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { summary } = useDashboardSummary();
+  const drawerOpen = useDashboardStore((state) => state.taskDrawerOpen);
+  const setDrawerOpen = useDashboardStore((state) => state.setTaskDrawerOpen);
 
-  const hasTasks = status && status.task_count > 0;
+  const hasTasks = (summary?.task_count ?? 0) > 0;
 
   const handleCreateTask = () => {
     setDrawerOpen(true);

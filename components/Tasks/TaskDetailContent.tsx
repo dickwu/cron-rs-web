@@ -26,7 +26,7 @@ import { TaskFormDrawer } from '@/components/Tasks/TaskForm';
 import { HookTable } from '@/components/Hooks/HookTable';
 import { StatusBadge } from '@/components/Dashboard/RecentRuns';
 import { useTask } from '@/hooks/useTasks';
-import { useRuns } from '@/hooks/useRuns';
+import { useRunSummaries } from '@/hooks/useRuns';
 import { deleteTask, triggerTask, enableTask, disableTask } from '@/lib/api';
 import { describeSchedule } from '@/lib/schedule';
 import { fmtDateTime } from '@/lib/date';
@@ -54,7 +54,7 @@ export function TaskDetailContent({
   const searchParams = useSearchParams();
   const returnTo = currentPathWithSearch(pathname, searchParams);
   const { task, isLoading, mutate } = useTask(taskId);
-  const { runs, isLoading: runsLoading } = useRuns({ task_id: taskId, limit: 50 });
+  const { runs, isLoading: runsLoading } = useRunSummaries({ task_id: taskId, limit: 50 });
   const [editOpen, setEditOpen] = useState(false);
 
   const handleDelete = async () => {

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Typography, Card, Select, Space, Tag } from 'antd';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { RunsTable } from '@/components/Runs/RunsTable';
-import { useRuns } from '@/hooks/useRuns';
+import { useRunSummaries } from '@/hooks/useRuns';
 import { useTasks } from '@/hooks/useTasks';
 import { collectTaskTags, taskMatchesTags } from '@/lib/tags';
+import { useUiStore } from '@/stores/uiStore';
 import type { Task } from '@/lib/types';
 
 const statusOptions = [
@@ -25,11 +26,16 @@ const statusOptions = [
 const FETCH_LIMIT = 500;
 
 export default function RunListView() {
-  const [taskFilter, setTaskFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const taskFilter = useUiStore((state) => state.runTaskFilter);
+  const statusFilter = useUiStore((state) => state.runStatusFilter);
+  const selectedTags = useUiStore((state) => state.runSelectedTags);
+  const page = useUiStore((state) => state.runPage);
+  const pageSize = useUiStore((state) => state.runPageSize);
+  const setTaskFilter = useUiStore((state) => state.setRunTaskFilter);
+  const setStatusFilter = useUiStore((state) => state.setRunStatusFilter);
+  const setSelectedTags = useUiStore((state) => state.setRunSelectedTags);
+  const setPage = useUiStore((state) => state.setRunPage);
+  const setPageSize = useUiStore((state) => state.setRunPageSize);
 
   const { tasks } = useTasks();
   const taskMap = useMemo<Record<string, Task>>(() => {
@@ -38,7 +44,7 @@ export default function RunListView() {
     return map;
   }, [tasks]);
 
-  const { runs: allRuns, isLoading } = useRuns({
+  const { runs: allRuns, isLoading } = useRunSummaries({
     task_id: taskFilter || undefined,
     status: statusFilter || undefined,
     limit: FETCH_LIMIT,
@@ -67,10 +73,7 @@ export default function RunListView() {
   ];
 
   const handleTagChange = (tag: string, checked: boolean) => {
-    setSelectedTags((current) =>
-      checked ? [...current, tag] : current.filter((t) => t !== tag)
-    );
-    setPage(1);
+    setSelectedTags(checked ? [...selectedTags, tag] : selectedTags.filter((t) => t !== tag));
   };
 
   // When tag filter is engaged we paginate the filtered list locally because
@@ -96,10 +99,7 @@ export default function RunListView() {
         <Space wrap>
           <Select
             value={taskFilter}
-            onChange={(val) => {
-              setTaskFilter(val);
-              setPage(1);
-            }}
+            onChange={setTaskFilter}
             options={taskOptions}
             style={{ minWidth: 200 }}
             placeholder="Filter by task"
@@ -108,10 +108,7 @@ export default function RunListView() {
           />
           <Select
             value={statusFilter}
-            onChange={(val) => {
-              setStatusFilter(val);
-              setPage(1);
-            }}
+            onChange={setStatusFilter}
             options={statusOptions}
             style={{ minWidth: 150 }}
             placeholder="Filter by status"
@@ -127,10 +124,7 @@ export default function RunListView() {
           <Space size={[6, 8]} wrap>
             <Tag.CheckableTag
               checked={selectedTags.length === 0}
-              onChange={() => {
-                setSelectedTags([]);
-                setPage(1);
-              }}
+              onChange={() => setSelectedTags([])}
             >
               All
             </Tag.CheckableTag>

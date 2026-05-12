@@ -76,6 +76,8 @@ export default function SettingsView() {
     mutate: mutateSettings,
   } = useSWR<AppSettings>('/api/v1/settings', swrFetcher, {
     revalidateOnFocus: false,
+    keepPreviousData: true,
+    dedupingInterval: 5000,
   });
 
   useEffect(() => {

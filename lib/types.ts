@@ -39,6 +39,66 @@ export interface JobRun {
   duration_ms: number | null;
 }
 
+export type JobRunStatus = JobRun['status'];
+
+export interface JobRunSummary {
+  id: string;
+  task_id: string;
+  started_at: string;
+  finished_at: string | null;
+  exit_code: number | null;
+  status: JobRunStatus;
+  attempt: number;
+  duration_ms: number | null;
+}
+
+export interface DashboardRunSummary extends JobRunSummary {
+  task_name: string | null;
+}
+
+export interface DashboardSummary {
+  task_count: number;
+  active_timers: number;
+  runs_24h: number;
+  success_rate: number;
+  recent_failures_24h: number;
+}
+
+export type DashboardRange = '24h' | '7d' | '30d';
+
+export interface DashboardRunCounts {
+  success: number;
+  failed: number;
+  skipped: number;
+  running: number;
+}
+
+export interface DashboardBucket {
+  label: string;
+  bucket_start: string;
+  counts: DashboardRunCounts;
+}
+
+export interface DashboardTaskBreakdown {
+  task_id: string;
+  task_name: string | null;
+  total: number;
+  counts: DashboardRunCounts;
+}
+
+export interface DashboardActivity {
+  range: DashboardRange;
+  buckets: DashboardBucket[];
+  total: number;
+  success: number;
+  failed: number;
+  skipped: number;
+  running: number;
+  success_rate: number | null;
+  top_tasks: DashboardTaskBreakdown[];
+  failed_runs: DashboardRunSummary[];
+}
+
 export interface HookRun {
   id: string;
   job_run_id: string;
@@ -51,13 +111,7 @@ export interface HookRun {
   status: 'success' | 'failed' | 'timeout';
 }
 
-export interface StatusResponse {
-  task_count: number;
-  active_timers: number;
-  runs_24h: number;
-  success_rate: number;
-  recent_failures_24h: number;
-}
+export type StatusResponse = DashboardSummary;
 
 export type SSEEventType =
   | 'task_created'

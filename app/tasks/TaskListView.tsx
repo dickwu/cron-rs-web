@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Typography, Button, Input, Space, Tag } from 'antd';
 import { PlusOutlined, ScheduleOutlined, SearchOutlined } from '@ant-design/icons';
 import { AppLayout } from '@/components/Layout/AppLayout';
@@ -8,14 +8,23 @@ import { TaskTable } from '@/components/Tasks/TaskTable';
 import { TaskFormDrawer } from '@/components/Tasks/TaskForm';
 import { useTasks } from '@/hooks/useTasks';
 import { collectTaskTags, taskMatchesTags } from '@/lib/tags';
+import { useUiStore } from '@/stores/uiStore';
 import type { Task } from '@/lib/types';
 
 export default function TaskListView() {
   const { tasks, isLoading, mutate } = useTasks();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [query, setQuery] = useState('');
+  const drawerOpen = useUiStore((state) => state.taskDrawerOpen);
+  const editingTaskId = useUiStore((state) => state.editingTaskId);
+  const selectedTags = useUiStore((state) => state.taskSelectedTags);
+  const query = useUiStore((state) => state.taskQuery);
+  const setDrawerOpen = useUiStore((state) => state.setTaskDrawerOpen);
+  const setEditingTaskId = useUiStore((state) => state.setEditingTaskId);
+  const setSelectedTags = useUiStore((state) => state.setTaskSelectedTags);
+  const setQuery = useUiStore((state) => state.setTaskQuery);
+  const editingTask = useMemo(
+    () => tasks.find((task) => task.id === editingTaskId) ?? null,
+    [editingTaskId, tasks]
+  );
   const tagOptions = useMemo(() => collectTaskTags(tasks), [tasks]);
   const normalizedQuery = query.trim().toLowerCase();
   const filteredTasks = useMemo(
@@ -37,24 +46,24 @@ export default function TaskListView() {
   );
 
   const handleEdit = (task: Task) => {
-    setEditingTask(task);
+    setEditingTaskId(task.id);
     setDrawerOpen(true);
   };
 
   const handleCreate = () => {
-    setEditingTask(null);
+    setEditingTaskId(null);
     setDrawerOpen(true);
   };
 
   const handleSuccess = () => {
     setDrawerOpen(false);
-    setEditingTask(null);
+    setEditingTaskId(null);
     mutate();
   };
 
   const handleTagChange = (tag: string, checked: boolean) => {
-    setSelectedTags((current) =>
-      checked ? [...current, tag] : current.filter((selectedTag) => selectedTag !== tag)
+    setSelectedTags(
+      checked ? [...selectedTags, tag] : selectedTags.filter((selectedTag) => selectedTag !== tag)
     );
   };
 

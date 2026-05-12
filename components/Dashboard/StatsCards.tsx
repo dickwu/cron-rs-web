@@ -9,7 +9,7 @@ import {
   PlayCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { useStatus } from '@/hooks/useRuns';
+import { useDashboardSummary } from '@/hooks/useDashboard';
 import type { StatusResponse } from '@/lib/types';
 
 interface StatsCardsProps {
@@ -81,7 +81,7 @@ function StatsGrid({ status }: { status: StatusResponse }) {
 }
 
 export function StatsCards({ onCreateTask }: StatsCardsProps) {
-  const { status, isLoading, isError } = useStatus();
+  const { summary: status, isLoading, isError } = useDashboardSummary();
 
   if (isLoading) {
     return (
@@ -97,7 +97,7 @@ export function StatsCards({ onCreateTask }: StatsCardsProps) {
     );
   }
 
-  if (isError) {
+  if (isError && !status) {
     return (
       <Card>
         <Typography.Text type="danger">Could not load dashboard statistics</Typography.Text>
