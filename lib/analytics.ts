@@ -1,4 +1,4 @@
-import type { JobRunSummary, JobRunStatus } from './types';
+import type { JobRunStatus } from './types';
 import { dayjs, parseDate } from './date';
 
 function aggKey(status: JobRunStatus): 'success' | 'failed' | 'running' | 'skipped' {
@@ -35,136 +35,216 @@ export function buildPulse(runs: { started_at: string; status: JobRunStatus }[])
   return buckets.reverse();
 }
 
-export interface ChartBucket {
-  label: string;
-  bucketStart: Date;
-  success: number;
-  failed: number;
-  skipped: number;
-  running: number;
-}
+const DOW_NAMES: Record<string, number> = {
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+};
 
-export function buildBuckets(
-  runs: { started_at: string; status: JobRunStatus }[],
-  range: '24h' | '7d' | '30d',
-): ChartBucket[] {
-  const count = range === '24h' ? 24 : range === '7d' ? 14 : 30;
-  const bucketUnit: dayjs.ManipulateType =
-    range === '24h' ? 'hour' : range === '7d' ? 'hour' : 'day';
-  const bucketLen = range === '24h' ? 1 : range === '7d' ? 12 : 1;
-  const now = dayjs();
-  const arr: ChartBucket[] = Array.from({ length: count }, (_, i) => {
-    const bucketStart = now.subtract((count - 1 - i) * bucketLen, bucketUnit);
-    const label =
-      range === '24h'
-        ? bucketStart.format('HH:00')
-        : range === '7d'
-        ? bucketStart.format('MMM D HH:00')
-        : bucketStart.format('MMM D');
-    return {
-      label,
-      bucketStart: bucketStart.toDate(),
-      success: 0,
-      failed: 0,
-      skipped: 0,
-      running: 0,
-    };
-  });
-  for (const r of runs) {
-    const at = parseDate(r.started_at);
-    if (!at) continue;
-    const offset = now.diff(at, bucketUnit);
-    const idx = count - 1 - Math.floor(offset / bucketLen);
-    if (idx < 0 || idx >= count) continue;
-    arr[idx][aggKey(r.status)] += 1;
+/** Expand systemd named shorthands (daily, weekly, …) to an OnCalendar form. */
+function expandNamedSchedule(s: string): string | null {
+  switch (s) {
+    case 'minutely':
+      return '*-*-* *:*:00';
+    case 'hourly':
+      return '*-*-* *:00:00';
+    case 'daily':
+      return '*-*-* 00:00:00';
+    case 'weekly':
+      return 'mon *-*-* 00:00:00';
+    case 'monthly':
+      return '*-*-01 00:00:00';
+    case 'quarterly':
+      return '*-01,04,07,10-01 00:00:00';
+    case 'semiannually':
+      return '*-01,07-01 00:00:00';
+    case 'yearly':
+    case 'annually':
+      return '*-01-01 00:00:00';
+    default:
+      return null;
   }
-  return arr;
 }
 
-export interface HeatmapDay {
-  total: number;
-  failed: number;
-}
-
-export function buildHeatmap(
-  runs: { started_at: string; status: JobRunStatus }[],
-): HeatmapDay[] {
-  const days = 365;
-  const arr: HeatmapDay[] = Array.from({ length: days }, () => ({ total: 0, failed: 0 }));
-  const now = dayjs();
-  for (const r of runs) {
-    const at = parseDate(r.started_at);
-    if (!at) continue;
-    const ago = now.diff(at, 'day');
-    if (ago < 0 || ago >= days) continue;
-    arr[days - 1 - ago].total += 1;
-    if (r.status === 'failed' || r.status === 'timeout' || r.status === 'crashed') {
-      arr[days - 1 - ago].failed += 1;
+/**
+ * Expand one systemd calendar field (e.g. `*`, `5`, `1,15`, `7..21`, `*​/5`,
+ * `0/10`) into the set of matching values within [min, max].
+ */
+function parseNumField(field: string, min: number, max: number): Set<number> {
+  const out = new Set<number>();
+  for (const raw of field.split(',')) {
+    const tok = raw.trim();
+    if (!tok) continue;
+    let base = tok;
+    let step = 1;
+    const slash = tok.indexOf('/');
+    if (slash >= 0) {
+      base = tok.slice(0, slash);
+      step = Number(tok.slice(slash + 1)) || 1;
+    }
+    if (base === '*' || base === '') {
+      for (let v = min; v <= max; v += step) out.add(v);
+    } else if (base.includes('..')) {
+      const [loS, hiS] = base.split('..');
+      const lo = Number(loS);
+      const hi = Number(hiS);
+      if (Number.isNaN(lo) || Number.isNaN(hi)) continue;
+      for (let v = lo; v <= hi; v += step) if (v >= min && v <= max) out.add(v);
+    } else {
+      const startV = Number(base);
+      if (Number.isNaN(startV)) continue;
+      if (slash >= 0) {
+        for (let v = startV; v <= max; v += step) if (v >= min) out.add(v);
+      } else if (startV >= min && startV <= max) {
+        out.add(startV);
+      }
     }
   }
-  return arr;
+  return out;
 }
 
-export interface TaskBreakdown {
-  task_id: string;
-  task_name: string;
-  total: number;
-  success: number;
-  failed: number;
-  running: number;
-  skipped: number;
+function dowNum(s: string): number | null {
+  const t = s.trim().toLowerCase();
+  if (t in DOW_NAMES) return DOW_NAMES[t];
+  const key = t.slice(0, 3);
+  if (key in DOW_NAMES) return DOW_NAMES[key];
+  const n = Number(t);
+  if (!Number.isNaN(n)) return ((n % 7) + 7) % 7; // systemd: 7 == Sunday
+  return null;
 }
 
-export function topTasks(
-  runs: (JobRunSummary & { task_name?: string | null })[],
-  limit = 6,
-): TaskBreakdown[] {
-  const m = new Map<string, TaskBreakdown>();
-  for (const r of runs) {
-    const cur =
-      m.get(r.task_id) ||
-      {
-        task_id: r.task_id,
-        task_name: r.task_name || r.task_id,
-        total: 0,
-        success: 0,
-        failed: 0,
-        running: 0,
-        skipped: 0,
-      };
-    cur.total += 1;
-    cur[aggKey(r.status)] += 1;
-    m.set(r.task_id, cur);
+/** Parse a day-of-week field into a set of 0..6 (Sun=0); null means "any". */
+function parseDow(field: string): Set<number> | null {
+  const f = field.trim();
+  if (!f || f === '*') return null;
+  const out = new Set<number>();
+  for (const tok of f.split(',')) {
+    if (tok.includes('..')) {
+      const [a, b] = tok.split('..');
+      const lo = dowNum(a);
+      const hi = dowNum(b);
+      if (lo === null || hi === null) continue;
+      let v = lo;
+      for (let i = 0; i < 7; i += 1) {
+        out.add(v % 7);
+        if (v % 7 === hi) break;
+        v += 1;
+      }
+    } else {
+      const d = dowNum(tok);
+      if (d !== null) out.add(d);
+    }
   }
-  return Array.from(m.values())
-    .sort((a, b) => b.total - a.total)
-    .slice(0, limit);
+  return out.size ? out : null;
 }
 
-/** Best-effort next-run estimator from a systemd OnCalendar expression. */
+interface ParsedCalendar {
+  year: Set<number> | null; // null == any year
+  month: Set<number>;
+  day: Set<number>;
+  dow: Set<number> | null; // null == any weekday
+  hour: Set<number>;
+  minute: Set<number>;
+  second: Set<number>;
+}
+
+function parseOnCalendar(expr: string): ParsedCalendar | null {
+  const parts = expr.trim().split(/\s+/);
+  let dowField: string | null = null;
+  let dateField: string;
+  let timeField: string;
+
+  const hasDate = (p: string) => p.includes('-');
+  const hasTime = (p: string) => p.includes(':');
+
+  if (parts.length >= 3 && !hasDate(parts[0]) && !hasTime(parts[0]) && hasDate(parts[1])) {
+    [dowField, dateField, timeField] = parts;
+  } else if (parts.length === 2 && hasDate(parts[0]) && hasTime(parts[1])) {
+    [dateField, timeField] = parts;
+  } else if (parts.length === 2 && !hasDate(parts[0]) && hasTime(parts[1])) {
+    // weekday + time-only, e.g. "Mon..Fri 09:00:00"
+    [dowField, timeField] = parts;
+    dateField = '*-*-*';
+  } else if (parts.length === 1 && hasTime(parts[0])) {
+    dateField = '*-*-*';
+    timeField = parts[0];
+  } else if (parts.length === 1 && hasDate(parts[0])) {
+    dateField = parts[0];
+    timeField = '00:00:00';
+  } else {
+    return null;
+  }
+
+  const dseg = dateField.split('-');
+  if (dseg.length !== 3) return null;
+  const year = dseg[0] === '*' ? null : parseNumField(dseg[0], 0, 9999);
+  const month = parseNumField(dseg[1], 1, 12);
+  const day = parseNumField(dseg[2], 1, 31);
+
+  const tseg = timeField.split(':');
+  if (tseg.length < 2) return null;
+  const hour = parseNumField(tseg[0], 0, 23);
+  const minute = parseNumField(tseg[1], 0, 59);
+  const second = tseg.length >= 3 ? parseNumField(tseg[2], 0, 59) : new Set([0]);
+
+  if (!month.size || !day.size || !hour.size || !minute.size) return null;
+
+  return {
+    year,
+    month,
+    day,
+    dow: dowField ? parseDow(dowField) : null,
+    hour,
+    minute,
+    second,
+  };
+}
+
+/**
+ * Next fire time for a systemd OnCalendar expression, evaluated in local time
+ * like the host's systemd would. Steps days (≤ ~2 years) and then picks the
+ * earliest matching hh:mm — cheap enough to call per keystroke in the
+ * schedule builder. Returns null when the expression can't be parsed or has
+ * no occurrence in range.
+ */
 export function nextRunAt(expr: string | null | undefined): Date | null {
-  const now = dayjs();
   if (!expr) return null;
-  if (expr.includes('*:*/2:00')) return now.add(90, 'second').toDate();
-  if (expr.includes('*:*/5:00')) return now.add(3, 'minute').add(12, 'second').toDate();
-  if (expr.includes('*:00,15,30,45:00')) return now.add(7, 'minute').toDate();
-  if (expr.includes('*:10:00')) return now.add(28, 'minute').toDate();
-  if (expr.includes('*:30:00')) return now.add(18, 'minute').toDate();
-  const dailyMatch = expr.match(/^\*-\*-\* (\d{1,2}):(\d{1,2}):00$/);
-  if (dailyMatch) {
-    let target = now
-      .hour(parseInt(dailyMatch[1], 10))
-      .minute(parseInt(dailyMatch[2], 10))
-      .second(0)
-      .millisecond(0);
-    if (target.isBefore(now)) target = target.add(1, 'day');
-    return target.toDate();
+  const trimmed = expr.trim();
+  const cal = parseOnCalendar(expandNamedSchedule(trimmed.toLowerCase()) ?? trimmed);
+  if (!cal) return null;
+
+  const hours = [...cal.hour].sort((a, b) => a - b);
+  const minutes = [...cal.minute].sort((a, b) => a - b);
+  const second = cal.second.size ? Math.min(...cal.second) : 0;
+
+  const now = new Date();
+  const MAX_DAYS = 366 * 2; // ~2 years
+  for (let i = 0; i <= MAX_DAYS; i += 1) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    if (cal.year && !cal.year.has(day.getFullYear())) continue;
+    if (!cal.month.has(day.getMonth() + 1)) continue;
+    if (!cal.day.has(day.getDate())) continue;
+    if (cal.dow && !cal.dow.has(day.getDay())) continue;
+
+    for (const h of hours) {
+      for (const m of minutes) {
+        const candidate = new Date(
+          day.getFullYear(),
+          day.getMonth(),
+          day.getDate(),
+          h,
+          m,
+          second,
+        );
+        if (candidate.getTime() > now.getTime()) return candidate;
+      }
+    }
   }
-  if (expr.startsWith('Sun') || expr.startsWith('Sat') || expr.startsWith('Mon..Fri')) {
-    return now.add(1, 'day').toDate();
-  }
-  if (expr.match(/\*-\*-\d+/)) return now.add(3, 'day').toDate();
-  return now.add(1, 'hour').toDate();
+  return null;
 }
 
 export { relTime, relTimeFuture, fmtDuration } from './date';
