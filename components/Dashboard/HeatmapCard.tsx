@@ -12,7 +12,7 @@ export function HeatmapCard() {
   const fmt = (n: number) => n.toLocaleString('en-US');
 
   return (
-    <div className="card">
+    <div className="card card-visible">
       <div className="card-head">
         <div>
           <div className="card-title">Run frequency · 12 months</div>

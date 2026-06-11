@@ -52,7 +52,7 @@ export function Sidebar({ onOpenCmdK }: { onOpenCmdK: () => void }) {
           <Icon.logo size={16} />
         </div>
         <div className="brand-name">cron-rs</div>
-        <span className="brand-sub">v0.3</span>
+        <span className="brand-sub">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
       </div>
       <nav className="sidebar-nav">
         <div className="sidebar-section-label">Manage</div>
