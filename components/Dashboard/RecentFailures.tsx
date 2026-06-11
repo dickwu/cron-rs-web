@@ -1,26 +1,16 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Icon } from '@/components/ui/icons';
-import { useRunSummaries } from '@/hooks/useRuns';
-import { useTasks } from '@/hooks/useTasks';
+import { useDashboardActivity } from '@/hooks/useDashboard';
 import { relTime } from '@/lib/analytics';
 
 export function RecentFailures() {
   const router = useRouter();
-  const since = useMemo(() => new Date(Date.now() - 7 * 86400 * 1000).toISOString(), []);
-  const { runs } = useRunSummaries({ since });
-  const { tasks } = useTasks();
-  const tasksById = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
-
-  const failed = runs
-    .filter(
-      (r) =>
-        r.status === 'failed' || r.status === 'timeout' || r.status === 'crashed',
-    )
-    .slice(0, 5);
+  const { activity } = useDashboardActivity('7d');
+  const failed = activity?.failed_runs ?? [];
 
   if (failed.length === 0) {
     return (
@@ -79,9 +69,7 @@ export function RecentFailures() {
             }}
           >
             <div className="truncate">
-              <div className="fw-500">
-                {tasksById[r.task_id]?.name || r.task_id}
-              </div>
+              <div className="fw-500">{r.task_name || r.task_id}</div>
               <div className="mono fz-11 muted">{r.id}</div>
             </div>
             <StatusPill status={r.status} />

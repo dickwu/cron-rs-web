@@ -2,32 +2,42 @@
 
 import React, { useMemo, useState } from 'react';
 import { StackedChart, type ChartBucket as RenderedBucket } from '@/components/ui/StackedChart';
-import { useRunSummaries } from '@/hooks/useRuns';
-import { buildBuckets } from '@/lib/analytics';
-import type { DashboardRange } from '@/lib/types';
-
-const RANGE_TO_DAYS: Record<DashboardRange, number> = {
-  '24h': 1,
-  '7d': 7,
-  '30d': 30,
-};
+import { useDashboardActivity } from '@/hooks/useDashboard';
+import type { DashboardBucket, DashboardRange } from '@/lib/types';
 
 type ChartMode = 'bars' | 'lines' | 'heatmap';
+
+/** Hourly buckets arrive keyed by UTC hour; show them in the local zone.
+ *  Daily buckets are UTC calendar days and keep their date label as-is. */
+function bucketLabel(bucket: DashboardBucket, range: DashboardRange): string {
+  if (range === '24h') {
+    const local = new Date(`${bucket.bucket_start}:00:00Z`);
+    return `${String(local.getHours()).padStart(2, '0')}:00`;
+  }
+  const [, month, day] = bucket.bucket_start.split('-');
+  return `${Number(month)}/${Number(day)}`;
+}
 
 export function ChartCard() {
   const [range, setRange] = useState<DashboardRange>('24h');
   const [mode, setMode] = useState<ChartMode>('bars');
-  const since = useMemo(
-    () => new Date(Date.now() - RANGE_TO_DAYS[range] * 86400 * 1000).toISOString(),
-    [range],
-  );
-  const { runs } = useRunSummaries({ since });
-  const buckets = useMemo<RenderedBucket[]>(() => buildBuckets(runs, range), [runs, range]);
+  const { activity } = useDashboardActivity(range);
 
-  const total = buckets.reduce((a, b) => a + b.success + b.failed + b.skipped + b.running, 0);
-  const failed = buckets.reduce((a, b) => a + b.failed, 0);
-  const success = buckets.reduce((a, b) => a + b.success, 0);
-  const successRate = total ? (success / total) * 100 : 0;
+  const buckets = useMemo<RenderedBucket[]>(
+    () =>
+      (activity?.buckets ?? []).map((b) => ({
+        label: bucketLabel(b, range),
+        success: b.counts.success,
+        failed: b.counts.failed,
+        skipped: b.counts.skipped,
+        running: b.counts.running,
+      })),
+    [activity, range],
+  );
+
+  const total = activity?.total ?? 0;
+  const failed = activity?.failed ?? 0;
+  const successRate = activity?.success_rate ?? null;
 
   return (
     <div className="card">
@@ -35,19 +45,19 @@ export function ChartCard() {
         <div>
           <div className="card-title">Run activity</div>
           <div className="card-sub">
-            <span className="mono">{total}</span> runs ·{' '}
+            <span className="mono">{total.toLocaleString('en-US')}</span> runs ·{' '}
             <span
               className="mono"
               style={{
                 color:
                   failed === 0
                     ? 'var(--c-success)'
-                    : successRate >= 90
+                    : (successRate ?? 0) >= 90
                     ? 'var(--c-warning)'
                     : 'var(--c-error)',
               }}
             >
-              {successRate.toFixed(1)}% success
+              {successRate === null ? '—' : `${successRate.toFixed(1)}% success`}
             </span>
           </div>
         </div>

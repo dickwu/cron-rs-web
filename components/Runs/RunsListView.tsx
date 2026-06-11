@@ -20,7 +20,9 @@ const STATUS_FILTERS: Array<{ k: string; label: string }> = [
 export function RunsListView() {
   const router = useRouter();
   const since = useMemo(() => new Date(Date.now() - 7 * 86400 * 1000).toISOString(), []);
-  const { runs } = useRunSummaries({ since });
+  // Cap the fetch: at production volume an uncapped 7-day window is tens of
+  // thousands of rows per poll. The list shows the most recent runs first.
+  const { runs } = useRunSummaries({ since, limit: 1000 });
   const { tasks } = useTasks();
   const tasksById = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
 

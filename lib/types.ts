@@ -104,6 +104,31 @@ export interface DashboardActivity {
   failed_runs: DashboardRunSummary[];
 }
 
+export interface HeatmapDayCount {
+  /** UTC calendar day, YYYY-MM-DD. */
+  date: string;
+  total: number;
+  failed: number;
+}
+
+export interface DashboardHeatmap {
+  days: number;
+  /** Sparse ascending day buckets; days without runs are omitted. */
+  buckets: HeatmapDayCount[];
+}
+
+export interface TaskActivityRow {
+  task_id: string;
+  /** UTC calendar day, YYYY-MM-DD. */
+  date: string;
+  counts: DashboardRunCounts;
+}
+
+export interface DashboardTaskActivity {
+  days: number;
+  rows: TaskActivityRow[];
+}
+
 export interface TaskDetailResponse {
   task: Task;
   hooks: Hook[];

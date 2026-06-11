@@ -8,7 +8,7 @@ import { Tag } from '@/components/ui/Tag';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { toast } from '@/components/ui/Toaster';
 import { useTasks } from '@/hooks/useTasks';
-import { useRunSummaries } from '@/hooks/useRuns';
+import { useTaskActivity } from '@/hooks/useDashboard';
 import { describeSchedule } from '@/lib/schedule';
 import { nextRunAt } from '@/lib/analytics';
 import { relTimeFuture } from '@/lib/date';
@@ -16,14 +16,15 @@ import { triggerTask, enableTask, disableTask, deleteTask } from '@/lib/api';
 import { usePrefs } from '@/stores/prefsStore';
 import { useSWRConfig } from 'swr';
 import type { TaskSummary } from '@/lib/types';
-import { dayjs, parseDate } from '@/lib/date';
+
+const SPARK_DAYS = 14;
+const MS_PER_DAY = 86400 * 1000;
 
 export function TasksListView() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { tasks } = useTasks();
-  const since = useMemo(() => new Date(Date.now() - 14 * 86400 * 1000).toISOString(), []);
-  const { runs } = useRunSummaries({ since });
+  const { taskActivity } = useTaskActivity(SPARK_DAYS);
   const showSchedule = usePrefs((s) => s.showSchedule);
   const showCommand = usePrefs((s) => s.showCommand);
   const showTags = usePrefs((s) => s.showTags);
@@ -51,18 +52,31 @@ export function TasksListView() {
     [tasks, tagFilter, q],
   );
 
+  // task_id -> UTC date -> total runs, from the SQL-aggregated activity feed.
+  const dailyTotals = useMemo(() => {
+    const m = new Map<string, Map<string, number>>();
+    for (const row of taskActivity?.rows ?? []) {
+      const c = row.counts;
+      const total = c.success + c.failed + c.skipped + c.running;
+      let perDay = m.get(row.task_id);
+      if (!perDay) {
+        perDay = new Map();
+        m.set(row.task_id, perDay);
+      }
+      perDay.set(row.date, (perDay.get(row.date) ?? 0) + total);
+    }
+    return m;
+  }, [taskActivity]);
+
   const sparkOf = (taskId: string) => {
-    const days = 14;
-    const arr = Array(days).fill(0);
-    const now = dayjs();
-    runs.forEach((r) => {
-      if (r.task_id !== taskId) return;
-      const at = parseDate(r.started_at);
-      if (!at) return;
-      const ago = now.diff(at, 'day');
-      if (ago >= 0 && ago < days) arr[days - 1 - ago] += 1;
+    const perDay = dailyTotals.get(taskId);
+    const now = Date.now();
+    return Array.from({ length: SPARK_DAYS }, (_, i) => {
+      const date = new Date(now - (SPARK_DAYS - 1 - i) * MS_PER_DAY)
+        .toISOString()
+        .slice(0, 10);
+      return perDay?.get(date) ?? 0;
     });
-    return arr;
   };
 
   const toggle = (id: string) => {

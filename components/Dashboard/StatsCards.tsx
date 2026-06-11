@@ -2,9 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Sparkline } from '@/components/ui/Sparkline';
-import { useDashboardSummary } from '@/hooks/useDashboard';
-import { useRunSummaries } from '@/hooks/useRuns';
-import { buildBuckets } from '@/lib/analytics';
+import { useDashboardActivity, useDashboardSummary } from '@/hooks/useDashboard';
 
 function StatCard({
   label,
@@ -45,23 +43,29 @@ function StatCard({
 
 export function StatsCards() {
   const { summary } = useDashboardSummary();
-  const since = useMemo(() => new Date(Date.now() - 7 * 86400 * 1000).toISOString(), []);
-  const { runs } = useRunSummaries({ since });
+  const { activity: hourly } = useDashboardActivity('24h');
+  const { activity: weekly } = useDashboardActivity('7d');
 
-  const sparkSuccess = useMemo(() => buildBuckets(runs, '24h').map((b) => b.success), [runs]);
+  const hourlyBuckets = useMemo(() => hourly?.buckets ?? [], [hourly]);
+  const weeklyBuckets = useMemo(() => weekly?.buckets ?? [], [weekly]);
+
+  const sparkSuccess = useMemo(() => hourlyBuckets.map((b) => b.counts.success), [hourlyBuckets]);
   const sparkActivity = useMemo(
-    () => buildBuckets(runs, '24h').map((b) => b.success + b.failed + b.running),
-    [runs],
+    () => hourlyBuckets.map((b) => b.counts.success + b.counts.failed + b.counts.running),
+    [hourlyBuckets],
   );
   const sparkRate = useMemo(
     () =>
-      buildBuckets(runs, '7d').map((b) => {
-        const t = b.success + b.failed;
-        return t ? (b.success / t) * 100 : 95;
+      weeklyBuckets.map((b) => {
+        const t = b.counts.success + b.counts.failed;
+        return t ? (b.counts.success / t) * 100 : 95;
       }),
-    [runs],
+    [weeklyBuckets],
   );
-  const sparkFailed = useMemo(() => buildBuckets(runs, '24h').map((b) => b.failed + 0.1), [runs]);
+  const sparkFailed = useMemo(
+    () => hourlyBuckets.map((b) => b.counts.failed + 0.1),
+    [hourlyBuckets],
+  );
 
   const successRate = summary?.success_rate;
   const successRateDisplay =
@@ -70,7 +74,11 @@ export function StatsCards() {
   return (
     <div className="stats-row">
       <StatCard label="Total tasks" value={summary?.task_count ?? '—'} sparkData={sparkActivity} />
-      <StatCard label="Runs · 24h" value={summary?.runs_24h ?? '—'} sparkData={sparkSuccess} />
+      <StatCard
+        label="Runs · 24h"
+        value={summary ? summary.runs_24h.toLocaleString('en-US') : '—'}
+        sparkData={sparkSuccess}
+      />
       <StatCard
         label="Success rate"
         value={successRateDisplay}

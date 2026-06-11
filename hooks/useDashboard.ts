@@ -5,9 +5,11 @@ import useSWR from 'swr';
 import { swrFetcher } from '@/lib/api';
 import type {
   DashboardActivity,
+  DashboardHeatmap,
   DashboardRange,
   DashboardRunSummary,
   DashboardSummary,
+  DashboardTaskActivity,
 } from '@/lib/types';
 import { useDashboardStore } from '@/stores/dashboardStore';
 
@@ -80,6 +82,45 @@ export function useDashboardActivity(range: DashboardRange) {
   return {
     activity,
     isLoading: isLoading && !activity,
+    isError: !!error,
+    error,
+    mutate,
+  };
+}
+
+export function useDashboardHeatmap() {
+  const cached = useDashboardStore((state) => state.heatmap);
+  const setHeatmap = useDashboardStore((state) => state.setHeatmap);
+  const { data, error, isLoading, mutate } = useSWR<DashboardHeatmap>(
+    '/api/v1/dashboard/heatmap',
+    swrFetcher,
+    { ...DASHBOARD_SWR_CONFIG, refreshInterval: 60000 }
+  );
+
+  useEffect(() => {
+    if (data) setHeatmap(data);
+  }, [data, setHeatmap]);
+
+  const heatmap = data || cached;
+  return {
+    heatmap,
+    isLoading: isLoading && !heatmap,
+    isError: !!error,
+    error,
+    mutate,
+  };
+}
+
+export function useTaskActivity(days = 14) {
+  const { data, error, isLoading, mutate } = useSWR<DashboardTaskActivity>(
+    `/api/v1/dashboard/task-activity?days=${days}`,
+    swrFetcher,
+    { ...DASHBOARD_SWR_CONFIG, refreshInterval: 30000 }
+  );
+
+  return {
+    taskActivity: data,
+    isLoading: isLoading && !data,
     isError: !!error,
     error,
     mutate,

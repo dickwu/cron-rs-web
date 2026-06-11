@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { CalendarHeatmap } from '@/components/ui/CalendarHeatmap';
-import { useRunSummaries } from '@/hooks/useRuns';
-import { buildHeatmap } from '@/lib/analytics';
+import { useDashboardHeatmap } from '@/hooks/useDashboard';
 
 export function HeatmapCard() {
-  const since = useMemo(() => new Date(Date.now() - 365 * 86400 * 1000).toISOString(), []);
-  const { runs } = useRunSummaries({ since });
-  const data = useMemo(() => buildHeatmap(runs), [runs]);
-  const total = data.reduce((a, b) => a + b.total, 0);
-  const failed = data.reduce((a, b) => a + b.failed, 0);
+  const { heatmap } = useDashboardHeatmap();
+  const buckets = heatmap?.buckets ?? [];
+  const total = buckets.reduce((a, b) => a + b.total, 0);
+  const failed = buckets.reduce((a, b) => a + b.failed, 0);
+  const fmt = (n: number) => n.toLocaleString('en-US');
 
   return (
     <div className="card">
@@ -18,9 +17,9 @@ export function HeatmapCard() {
         <div>
           <div className="card-title">Run frequency · 12 months</div>
           <div className="card-sub">
-            <span className="mono">{total}</span> runs ·{' '}
+            <span className="mono">{fmt(total)}</span> runs ·{' '}
             <span className="mono" style={{ color: 'var(--c-error)' }}>
-              {failed}
+              {fmt(failed)}
             </span>{' '}
             failed
           </div>
@@ -52,7 +51,7 @@ export function HeatmapCard() {
         </div>
       </div>
       <div className="card-body">
-        <CalendarHeatmap data={data} />
+        <CalendarHeatmap data={buckets} />
       </div>
     </div>
   );
