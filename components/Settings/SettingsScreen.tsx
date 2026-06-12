@@ -151,14 +151,8 @@ export function SettingsScreen() {
         </div>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          maxWidth: 760,
-        }}
-      >
+      <div className="settings-grid">
+        <div className="settings-main">
         <div className="card">
           <div className="card-head">
             <div className="card-title">Appearance</div>
@@ -414,8 +408,9 @@ export function SettingsScreen() {
             </dl>
           </div>
         </div>
+        </div>
 
-        <div className="grid-2">
+        <div className="settings-side">
           <div className="card">
             <div className="card-head">
               <div className="card-title">Session</div>
@@ -446,9 +441,45 @@ export function SettingsScreen() {
                 <dd className="mono">{status?.task_count ?? '—'}</dd>
                 <dt>Active timers</dt>
                 <dd className="mono">{status?.active_timers ?? '—'}</dd>
+                <dt>Runs · 24h</dt>
+                <dd className="mono">
+                  {status ? status.runs_24h.toLocaleString('en-US') : '—'}
+                </dd>
+                <dt>Success rate</dt>
+                <dd className="mono">
+                  {status ? `${status.success_rate.toFixed(1)}%` : '—'}
+                </dd>
                 <dt>Failures · 24h</dt>
-                <dd className="mono" style={{ color: 'var(--c-error)' }}>
+                <dd
+                  className="mono"
+                  style={{
+                    color: status?.recent_failures_24h ? 'var(--c-error)' : undefined,
+                  }}
+                >
                   {status?.recent_failures_24h ?? '—'}
+                </dd>
+              </dl>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head">
+              <div className="card-title">About</div>
+            </div>
+            <div className="card-body">
+              <dl className="dl">
+                <dt>Dashboard</dt>
+                <dd className="mono">v{process.env.NEXT_PUBLIC_APP_VERSION}</dd>
+                <dt>Source</dt>
+                <dd>
+                  <a
+                    className="mono"
+                    href="https://github.com/dickwu/cron-rs"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    dickwu/cron-rs
+                  </a>
                 </dd>
               </dl>
             </div>

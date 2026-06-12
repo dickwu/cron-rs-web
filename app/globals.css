@@ -786,6 +786,21 @@ label.field > .help { font-size: 11px; color: var(--text-muted); margin-top: 4px
 .dl dd { color: var(--text); }
 .dl dd.mono { font-family: var(--font-mono); font-size: 12.5px; }
 
+/* Settings: single column on laptops; on big screens the interactive
+   settings keep their form width and a sticky status rail uses the rest. */
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  max-width: 760px;
+  align-items: start;
+}
+.settings-main, .settings-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 1280px) {
+  .settings-grid { grid-template-columns: minmax(0, 760px) minmax(300px, 360px); max-width: 1180px; }
+  .settings-side { position: sticky; top: 14px; }
+}
+
 /* Instrument boot: content rises in once per page, oldest panel first. */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(6px); }
