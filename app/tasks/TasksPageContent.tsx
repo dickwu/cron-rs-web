@@ -7,6 +7,7 @@ import { TasksListView } from '@/components/Tasks/TasksListView';
 import { TaskDetailView } from '@/components/Tasks/TaskDetailView';
 import { TaskFormDrawer } from '@/components/Tasks/TaskFormDrawer';
 import { useSWRConfig } from 'swr';
+import { navReplace } from '@/lib/navigation';
 
 export default function TasksPageContent() {
   const router = useRouter();
@@ -23,13 +24,13 @@ export default function TasksPageContent() {
 
   const closeDrawer = () => {
     setDrawerOpen(false);
-    if (isNew) router.replace('/tasks');
+    if (isNew) navReplace(router, '/tasks');
   };
 
   const onSuccess = () => {
     setDrawerOpen(false);
     mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/'));
-    router.replace('/tasks');
+    navReplace(router, '/tasks');
   };
 
   const header = taskId

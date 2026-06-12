@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/icons';
 import { useTasks } from '@/hooks/useTasks';
 import { useRunSummaries } from '@/hooks/useRuns';
 import { usePrefs } from '@/stores/prefsStore';
+import { navPush } from '@/lib/navigation';
 
 interface NavEntry {
   key: string;
@@ -64,7 +65,7 @@ export function Sidebar({ onOpenCmdK }: { onOpenCmdK: () => void }) {
             <button
               key={item.key}
               className={`nav-item ${active ? 'active' : ''}`}
-              onClick={() => router.push(item.href)}
+              onClick={() => navPush(router, item.href)}
             >
               <ItemIcon size={15} />
               {item.label}
@@ -80,7 +81,7 @@ export function Sidebar({ onOpenCmdK }: { onOpenCmdK: () => void }) {
             <button
               key={item.key}
               className={`nav-item ${active ? 'active' : ''}`}
-              onClick={() => router.push(item.href)}
+              onClick={() => navPush(router, item.href)}
             >
               <ItemIcon size={15} />
               {item.label}
@@ -150,7 +151,7 @@ export function TopbarNav({ onOpenCmdK }: { onOpenCmdK: () => void }) {
             <button
               key={item.key}
               className={`nav-item ${active ? 'active' : ''}`}
-              onClick={() => router.push(item.href)}
+              onClick={() => navPush(router, item.href)}
             >
               <ItemIcon size={14} />
               <span>{item.label}</span>

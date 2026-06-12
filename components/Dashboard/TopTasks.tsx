@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDashboardActivity } from '@/hooks/useDashboard';
+import { navPush } from '@/lib/navigation';
 
 export function TopTasksCard() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export function TopTasksCard() {
           <button
             key={t.task_id}
             className="flex items-center between gap-3"
-            onClick={() => router.push(`/tasks?id=${t.task_id}`)}
+            onClick={() => navPush(router, `/tasks?id=${t.task_id}`)}
             style={{
               width: '100%',
               padding: '10px 18px',

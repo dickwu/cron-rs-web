@@ -9,6 +9,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { swrFetcher } from '@/lib/api';
 import { hookTypeLabels } from '@/lib/hooks';
 import type { Hook } from '@/lib/types';
+import { navPush } from '@/lib/navigation';
 
 const TYPE_FILTERS: Array<{ k: string; label: string }> = [
   { k: 'all', label: 'All' },
@@ -111,7 +112,7 @@ export function HooksScreen() {
               <div>
                 <button
                   className="btn ghost sm"
-                  onClick={() => router.push(`/tasks?id=${task.id}`)}
+                  onClick={() => navPush(router, `/tasks?id=${task.id}`)}
                   style={{ padding: 0, height: 'auto', fontSize: 14, fontWeight: 600 }}
                 >
                   {task.name}
@@ -126,7 +127,7 @@ export function HooksScreen() {
                 </span>
                 <button
                   className="btn sm"
-                  onClick={() => router.push(`/tasks?id=${task.id}`)}
+                  onClick={() => navPush(router, `/tasks?id=${task.id}`)}
                 >
                   <Icon.edit size={11} /> Edit
                 </button>
@@ -140,7 +141,7 @@ export function HooksScreen() {
                     return (
                       <tr
                         key={h.id}
-                        onClick={() => router.push(`/tasks?id=${task.id}`)}
+                        onClick={() => navPush(router, `/tasks?id=${task.id}`)}
                       >
                         <td className="shrink" style={{ paddingLeft: 18 }}>
                           <span className="hook-bracket" />

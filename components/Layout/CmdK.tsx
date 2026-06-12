@@ -10,6 +10,7 @@ import { relTime } from '@/lib/analytics';
 import { triggerTask } from '@/lib/api';
 import { toast } from '@/components/ui/Toaster';
 import { PRIMARY_NAV, SECONDARY_NAV } from './SideNav';
+import { navPush } from '@/lib/navigation';
 
 interface CmdItem {
   group: string;
@@ -45,7 +46,7 @@ export function CmdK({ open, onClose }: { open: boolean; onClose: () => void }) 
         group: 'Navigate',
         icon: n.icon,
         label: 'Go to ' + n.label,
-        action: () => router.push(n.href),
+        action: () => navPush(router, n.href),
       }),
     );
     all.push({
@@ -53,7 +54,7 @@ export function CmdK({ open, onClose }: { open: boolean; onClose: () => void }) 
       icon: Icon.plus,
       label: 'Create new task…',
       meta: 'N',
-      action: () => router.push('/tasks?new=1'),
+      action: () => navPush(router, '/tasks?new=1'),
     });
     all.push({
       group: 'Actions',
@@ -73,7 +74,7 @@ export function CmdK({ open, onClose }: { open: boolean; onClose: () => void }) 
         icon: Icon.tasks,
         label: t.name,
         meta: t.id,
-        action: () => router.push(`/tasks?id=${t.id}`),
+        action: () => navPush(router, `/tasks?id=${t.id}`),
       }),
     );
     tasks
@@ -100,7 +101,7 @@ export function CmdK({ open, onClose }: { open: boolean; onClose: () => void }) 
         icon: Icon.runs,
         label: `${r.task_id.slice(0, 12)} · ${r.status}`,
         meta: relTime(r.started_at),
-        action: () => router.push(`/runs?id=${r.id}`),
+        action: () => navPush(router, `/runs?id=${r.id}`),
       }),
     );
 

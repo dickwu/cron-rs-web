@@ -16,6 +16,7 @@ import { triggerTask, enableTask, disableTask, deleteTask } from '@/lib/api';
 import { usePrefs } from '@/stores/prefsStore';
 import { useSWRConfig } from 'swr';
 import type { TaskSummary } from '@/lib/types';
+import { navPush } from '@/lib/navigation';
 
 const SPARK_DAYS = 14;
 const MS_PER_DAY = 86400 * 1000;
@@ -139,7 +140,7 @@ export function TasksListView() {
           </div>
           <button
             className="btn primary"
-            onClick={() => router.push('/tasks?new=1')}
+            onClick={() => navPush(router, '/tasks?new=1')}
           >
             <Icon.plus size={13} /> New task
           </button>
@@ -238,7 +239,7 @@ export function TasksListView() {
                   spark={sparkOf(task.id)}
                   selected={selected.has(task.id)}
                   onToggle={() => toggle(task.id)}
-                  onOpen={() => router.push(`/tasks?id=${task.id}`)}
+                  onOpen={() => navPush(router, `/tasks?id=${task.id}`)}
                   onTrigger={async () => {
                     try {
                       await triggerTask(task.id);

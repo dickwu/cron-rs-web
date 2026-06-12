@@ -16,6 +16,7 @@ import { TopTasksCard } from '@/components/Dashboard/TopTasks';
 import { EmptyState } from '@/components/Dashboard/EmptyState';
 import { TaskFormDrawer } from '@/components/Tasks/TaskFormDrawer';
 import { useDashboardSummary } from '@/hooks/useDashboard';
+import { navPush } from '@/lib/navigation';
 
 function DashboardInner() {
   const router = useRouter();
@@ -33,7 +34,7 @@ function DashboardInner() {
   const handleSuccess = () => {
     setDrawerOpen(false);
     mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/'));
-    router.push('/tasks');
+    navPush(router, '/tasks');
   };
 
   const header = {

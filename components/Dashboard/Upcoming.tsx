@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
 import { nextRunAt } from '@/lib/analytics';
 import { relTimeFuture, dayjs } from '@/lib/date';
+import { navPush } from '@/lib/navigation';
 
 export function Upcoming() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export function Upcoming() {
           <button
             key={task.id}
             className="flex items-center between"
-            onClick={() => router.push(`/tasks?id=${task.id}`)}
+            onClick={() => navPush(router, `/tasks?id=${task.id}`)}
             style={{
               width: '100%',
               padding: '10px 18px',

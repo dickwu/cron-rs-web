@@ -11,6 +11,7 @@ import { fmtDuration, fmtDateTimeLong, relTime } from '@/lib/date';
 import { triggerTask } from '@/lib/api';
 import { toast } from '@/components/ui/Toaster';
 import { useSWRConfig } from 'swr';
+import { navPush } from '@/lib/navigation';
 
 export function RunDetailView({ runId }: { runId: string }) {
   const router = useRouter();
@@ -73,7 +74,7 @@ export function RunDetailView({ runId }: { runId: string }) {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
-            <button className="btn ghost sm" onClick={() => router.push('/runs')}>
+            <button className="btn ghost sm" onClick={() => navPush(router, '/runs')}>
               <Icon.chevron size={12} style={{ transform: 'rotate(180deg)' }} /> Runs
             </button>
           </div>
@@ -86,7 +87,7 @@ export function RunDetailView({ runId }: { runId: string }) {
         <div className="flex gap-2">
           <button
             className="btn"
-            onClick={() => router.push(`/tasks?id=${run.task_id}`)}
+            onClick={() => navPush(router, `/tasks?id=${run.task_id}`)}
           >
             <Icon.tasks size={13} /> View task
           </button>
@@ -145,7 +146,7 @@ export function RunDetailView({ runId }: { runId: string }) {
               <button
                 className="btn ghost sm"
                 style={{ padding: 0, height: 'auto' }}
-                onClick={() => router.push(`/tasks?id=${run.task_id}`)}
+                onClick={() => navPush(router, `/tasks?id=${run.task_id}`)}
               >
                 {task?.name || run.task_id}
               </button>

@@ -10,6 +10,7 @@ import { CmdK } from './CmdK';
 import { Toaster } from '@/components/ui/Toaster';
 import { useSSE } from '@/hooks/useSSE';
 import { usePrefs } from '@/stores/prefsStore';
+import { navPush } from '@/lib/navigation';
 
 export interface ShellHeader {
   crumbs: Crumb[];
@@ -41,7 +42,7 @@ export function AppShell({ children, header }: AppShellProps) {
   const crumbs = useMemo<Crumb[]>(() => {
     if (header?.crumbs?.length) {
       return header.crumbs.map((c) =>
-        c.href && !c.onClick ? { ...c, onClick: () => router.push(c.href!) } : c,
+        c.href && !c.onClick ? { ...c, onClick: () => navPush(router, c.href!) } : c,
       );
     }
     return defaultCrumbs(pathname);
@@ -67,7 +68,7 @@ export function AppShell({ children, header }: AppShellProps) {
         !isTypingTarget(e.target)
       ) {
         e.preventDefault();
-        router.push('/tasks?new=1');
+        navPush(router, '/tasks?new=1');
       }
     };
     window.addEventListener('keydown', handler);

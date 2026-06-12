@@ -8,6 +8,7 @@ import { Tag } from '@/components/ui/Tag';
 import { useRunSummaries } from '@/hooks/useRuns';
 import { useTasks } from '@/hooks/useTasks';
 import { relTime, fmtDuration } from '@/lib/date';
+import { navPush } from '@/lib/navigation';
 
 const STATUS_FILTERS: Array<{ k: string; label: string }> = [
   { k: 'all', label: 'All' },
@@ -125,7 +126,7 @@ export function RunsListView() {
             </thead>
             <tbody>
               {filtered.slice(0, 200).map((r) => (
-                <tr key={r.id} onClick={() => router.push(`/runs?id=${r.id}`)}>
+                <tr key={r.id} onClick={() => navPush(router, `/runs?id=${r.id}`)}>
                   <td>
                     <div className="fw-500">{r.task_name}</div>
                     <div className="mono fz-11 muted">{r.id}</div>

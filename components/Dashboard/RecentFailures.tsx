@@ -6,6 +6,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { Icon } from '@/components/ui/icons';
 import { useDashboardActivity } from '@/hooks/useDashboard';
 import { relTime } from '@/lib/analytics';
+import { navPush } from '@/lib/navigation';
 
 export function RecentFailures() {
   const router = useRouter();
@@ -54,7 +55,7 @@ export function RecentFailures() {
         {failed.map((r) => (
           <button
             key={r.id}
-            onClick={() => router.push(`/runs?id=${r.id}`)}
+            onClick={() => navPush(router, `/runs?id=${r.id}`)}
             style={{
               width: '100%',
               display: 'grid',

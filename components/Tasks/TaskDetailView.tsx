@@ -15,6 +15,7 @@ import { relTime, relTimeFuture, fmtDuration, fmtDateTimeLong, dayjs } from '@/l
 import { triggerTask, deleteTask } from '@/lib/api';
 import { hookTypeLabels } from '@/lib/hooks';
 import { useSWRConfig } from 'swr';
+import { navPush } from '@/lib/navigation';
 
 type TabKey = 'overview' | 'runs' | 'hooks' | 'schedule';
 
@@ -68,7 +69,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
       await deleteTask(task.id);
       toast(`Deleted ${task.name}`, 'success');
       mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/'));
-      router.push('/tasks');
+      navPush(router, '/tasks');
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Delete failed', 'error');
     }
@@ -79,7 +80,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
-            <button className="btn ghost sm" onClick={() => router.push('/tasks')}>
+            <button className="btn ghost sm" onClick={() => navPush(router, '/tasks')}>
               <Icon.chevron size={12} style={{ transform: 'rotate(180deg)' }} /> Tasks
             </button>
           </div>
@@ -262,7 +263,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               </thead>
               <tbody>
                 {runs.slice(0, 50).map((r) => (
-                  <tr key={r.id} onClick={() => router.push(`/runs?id=${r.id}`)}>
+                  <tr key={r.id} onClick={() => navPush(router, `/runs?id=${r.id}`)}>
                     <td className="mono fz-12">{r.id}</td>
                     <td className="shrink">
                       <StatusPill status={r.status} />
@@ -310,7 +311,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         <div className="card">
           <div className="card-head">
             <div className="card-title">Hooks · this task</div>
-            <button className="btn sm" onClick={() => router.push(`/hooks?task=${task.id}`)}>
+            <button className="btn sm" onClick={() => navPush(router, `/hooks?task=${task.id}`)}>
               <Icon.plus size={12} /> Add hook
             </button>
           </div>

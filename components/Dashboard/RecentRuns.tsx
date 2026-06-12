@@ -6,6 +6,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { Icon } from '@/components/ui/icons';
 import { useDashboardRecentRuns } from '@/hooks/useDashboard';
 import { fmtDuration, relTime } from '@/lib/analytics';
+import { navPush } from '@/lib/navigation';
 
 export function RecentRunsCard() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export function RecentRunsCard() {
         <div className="card-title">Recent runs</div>
         <button
           className="muted fz-12"
-          onClick={() => router.push('/runs')}
+          onClick={() => navPush(router, '/runs')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -53,7 +54,7 @@ export function RecentRunsCard() {
             </thead>
             <tbody>
               {runs.slice(0, 10).map((r) => (
-                <tr key={r.id} onClick={() => router.push(`/runs?id=${r.id}`)}>
+                <tr key={r.id} onClick={() => navPush(router, `/runs?id=${r.id}`)}>
                   <td>
                     <div className="fw-500">{r.task_name || r.task_id}</div>
                     <div
