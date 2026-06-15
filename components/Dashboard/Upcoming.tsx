@@ -6,14 +6,26 @@ import { useTasks } from '@/hooks/useTasks';
 import { nextRunAt } from '@/lib/analytics';
 import { relTimeFuture, dayjs } from '@/lib/date';
 import { navPush } from '@/lib/navigation';
+import { staggerAssignments, applyStaggerSecond } from '@/lib/stagger';
 
 export function Upcoming() {
   const router = useRouter();
   const { tasks } = useTasks();
 
+  // Mirror the daemon's every-minute stagger — computed over all tasks
+  // (including disabled, which hold their slot) so predicted seconds match the
+  // installed timers — so upcoming runs show their real, distinct fire times
+  // instead of all colliding at :00.
+  const stagger = staggerAssignments(tasks);
+
   const upcoming = tasks
     .filter((t) => t.enabled)
-    .map((t) => ({ task: t, at: nextRunAt(t.schedule) }))
+    .map((t) => {
+      const second = stagger.get(t.id);
+      const schedule =
+        second === undefined ? t.schedule : applyStaggerSecond(t.schedule, second);
+      return { task: t, at: nextRunAt(schedule) };
+    })
     .filter((x): x is { task: typeof x.task; at: Date } => x.at instanceof Date)
     .sort((a, b) => a.at.getTime() - b.at.getTime())
     .slice(0, 6);
@@ -58,7 +70,7 @@ export function Upcoming() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="mono fz-12">{relTimeFuture(at)}</div>
-              <div className="muted fz-11">{dayjs(at).format('HH:mm')}</div>
+              <div className="muted fz-11">{dayjs(at).format('HH:mm:ss')}</div>
             </div>
           </button>
         ))}
