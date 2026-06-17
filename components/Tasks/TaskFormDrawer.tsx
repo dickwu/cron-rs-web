@@ -23,6 +23,7 @@ interface FormState {
   concurrency_policy: 'skip' | 'allow' | 'queue';
   lock_key: string;
   sandbox_profile: string;
+  enabled: boolean;
 }
 
 const EMPTY: FormState = {
@@ -37,6 +38,7 @@ const EMPTY: FormState = {
   concurrency_policy: 'skip',
   lock_key: '',
   sandbox_profile: '',
+  enabled: true,
 };
 
 export function TaskFormDrawer({
@@ -70,6 +72,7 @@ export function TaskFormDrawer({
         concurrency_policy: task.concurrency_policy,
         lock_key: task.lock_key || '',
         sandbox_profile: task.sandbox_profile || '',
+        enabled: task.enabled,
       });
     } else {
       setState(EMPTY);
@@ -119,7 +122,7 @@ export function TaskFormDrawer({
         sandbox_profile: state.sandbox_profile.trim() || null,
       };
       if (isEdit && task) {
-        await updateTask(task.id, payload);
+        await updateTask(task.id, { ...payload, enabled: state.enabled });
         toast(`Updated ${payload.name}`, 'success');
       } else {
         await createTask(payload);
@@ -151,6 +154,64 @@ export function TaskFormDrawer({
         </>
       }
     >
+      {isEdit && (
+        <label className="field">
+          <div className="label-row">
+            <span className="label">Status</span>
+            <span className="hint">timer {state.enabled ? 'active' : 'stopped'}</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={state.enabled}
+            onClick={() => setField('enabled', !state.enabled)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            <span
+              style={{
+                width: 34,
+                height: 20,
+                borderRadius: 999,
+                background: state.enabled ? 'var(--accent)' : 'var(--border-strong)',
+                position: 'relative',
+                transition: 'background 120ms',
+                flex: '0 0 auto',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: 2,
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  background: 'var(--accent-fg)',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+                  transform: state.enabled ? 'translateX(14px)' : 'translateX(0)',
+                  transition: 'transform 120ms',
+                }}
+              />
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              {state.enabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </button>
+          <div className="help">
+            Disabled tasks keep their configuration but their systemd timer is stopped and
+            won&apos;t fire until re-enabled.
+          </div>
+        </label>
+      )}
+
       <label className="field">
         <div className="label-row">
           <span className="label">Name</span>
