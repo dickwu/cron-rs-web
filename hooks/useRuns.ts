@@ -77,7 +77,16 @@ export function useRun(id: string | null) {
   const { data, error, isLoading, mutate } = useSWR<JobRun>(
     id ? `/api/v1/runs/${id}` : null,
     swrFetcher,
-    { ...LIVE_LIST_CONFIG, refreshInterval: 8000 }
+    {
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      // While a run is in flight the daemon flushes stdout/stderr to the DB
+      // every ~1s, so poll briskly to stream that output into the terminal.
+      // Once finished, fall back to the slow cadence (SSE covers transitions).
+      dedupingInterval: 1000,
+      refreshInterval: (latest?: JobRun) =>
+        latest?.status === 'running' || latest?.status === 'retrying' ? 1500 : 8000,
+    }
   );
 
   return {
