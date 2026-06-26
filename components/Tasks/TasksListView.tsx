@@ -32,6 +32,7 @@ export function TasksListView() {
 
   const [q, setQ] = useState('');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const allTags = useMemo(
@@ -39,9 +40,13 @@ export function TasksListView() {
     [tasks],
   );
 
+  const enabledCount = useMemo(() => tasks.filter((t) => t.enabled).length, [tasks]);
+
   const visible = useMemo(
     () =>
       tasks.filter((t) => {
+        if (statusFilter === 'enabled' && !t.enabled) return false;
+        if (statusFilter === 'disabled' && t.enabled) return false;
         if (tagFilter && !(t.tags || []).includes(tagFilter)) return false;
         if (!q) return true;
         const s = q.toLowerCase();
@@ -50,7 +55,7 @@ export function TasksListView() {
           (t.tags || []).some((tag) => tag.toLowerCase().includes(s))
         );
       }),
-    [tasks, tagFilter, q],
+    [tasks, statusFilter, tagFilter, q],
   );
 
   // task_id -> UTC date -> total runs, from the SQL-aggregated activity feed.
@@ -145,6 +150,36 @@ export function TasksListView() {
             <Icon.plus size={13} /> New task
           </button>
         </div>
+      </div>
+
+      <div
+        className="flex gap-2 items-center mb-4"
+        style={{ flexWrap: 'wrap' }}
+      >
+        <span className="muted fz-12" style={{ marginRight: 4 }}>
+          Status
+        </span>
+        <Tag
+          active={statusFilter === 'all'}
+          subtle={statusFilter !== 'all'}
+          onClick={() => setStatusFilter('all')}
+        >
+          All ({tasks.length})
+        </Tag>
+        <Tag
+          active={statusFilter === 'enabled'}
+          subtle={statusFilter !== 'enabled'}
+          onClick={() => setStatusFilter('enabled')}
+        >
+          Enabled ({enabledCount})
+        </Tag>
+        <Tag
+          active={statusFilter === 'disabled'}
+          subtle={statusFilter !== 'disabled'}
+          onClick={() => setStatusFilter('disabled')}
+        >
+          Disabled ({tasks.length - enabledCount})
+        </Tag>
       </div>
 
       {allTags.length > 0 && (
