@@ -50,7 +50,16 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(body || res.statusText, res.status);
+    let message = body || res.statusText;
+    try {
+      const parsed = JSON.parse(body);
+      if (typeof parsed?.error === 'string' && parsed.error) {
+        message = parsed.error;
+      }
+    } catch {
+      // Not JSON — keep the raw text.
+    }
+    throw new ApiError(message, res.status);
   }
 
   if (res.status === 204) {

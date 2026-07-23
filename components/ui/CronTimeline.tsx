@@ -38,12 +38,14 @@ export function vizForSchedule(expr: string): { minute: number[]; hour: number[]
   if (!expr) {
     return { minute, hour: Array.from({ length: 24 }, (_, i) => i) };
   }
+  // systemd only accepts the `0/N` step form; `*/N` is kept for legacy values.
+  const hasMinuteStep = (n: number) => expr.includes(`:0/${n}:`) || expr.includes(`:*/${n}:`);
   if (expr.includes('*:00,15,30,45:00')) minute = [0, 15, 30, 45];
-  else if (expr.includes('*:*/2:00')) minute = Array.from({ length: 30 }, (_, i) => i * 2);
-  else if (expr.includes('*:*/5:00')) minute = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-  else if (expr.includes('*:*/10:00')) minute = [0, 10, 20, 30, 40, 50];
-  else if (expr.includes('*:*/15:00')) minute = [0, 15, 30, 45];
-  else if (expr.includes('*:*/30:00')) minute = [0, 30];
+  else if (hasMinuteStep(2)) minute = Array.from({ length: 30 }, (_, i) => i * 2);
+  else if (hasMinuteStep(5)) minute = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+  else if (hasMinuteStep(10)) minute = [0, 10, 20, 30, 40, 50];
+  else if (hasMinuteStep(15)) minute = [0, 15, 30, 45];
+  else if (hasMinuteStep(30)) minute = [0, 30];
   else if (expr.match(/\*:(\d{1,2}):00$/)) {
     const m = expr.match(/\*:(\d{1,2}):00$/);
     if (m) minute = [parseInt(m[1], 10)];

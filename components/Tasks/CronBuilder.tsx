@@ -7,8 +7,9 @@ import { nextRunAt } from '@/lib/analytics';
 import { relTimeFuture, dayjs } from '@/lib/date';
 
 const PRESETS: Array<{ label: string; expr: string }> = [
-  { label: 'Every 2 min', expr: '*-*-* *:*/2:00' },
-  { label: 'Every 5 min', expr: '*-*-* *:*/5:00' },
+  // systemd rejects `*/N` steps in OnCalendar; the valid form is `0/N`.
+  { label: 'Every 2 min', expr: '*-*-* *:0/2:00' },
+  { label: 'Every 5 min', expr: '*-*-* *:0/5:00' },
   { label: 'Every 15 min', expr: '*-*-* *:00,15,30,45:00' },
   { label: 'Hourly :10', expr: '*-*-* *:10:00' },
   { label: 'Daily 02:00', expr: '*-*-* 02:00:00' },
@@ -34,9 +35,9 @@ export function CronBuilder({
     let cur = start;
     for (let i = 0; i < 5; i++) {
       arr.push(cur);
-      const step = value.includes('*:*/2:00')
+      const step = value.includes(':0/2:') || value.includes(':*/2:')
         ? 2 * 60000
-        : value.includes('*:*/5:00')
+        : value.includes(':0/5:') || value.includes(':*/5:')
         ? 5 * 60000
         : value.includes('*:00,15,30,45:00')
         ? 15 * 60000
