@@ -19,7 +19,10 @@ export interface Task {
 export type TaskSummary = Pick<
   Task,
   'id' | 'name' | 'schedule' | 'tags' | 'enabled' | 'updated_at'
->;
+> & {
+  /** Present on daemons >= 0.1.6; older ones omit it from list responses. */
+  command?: string;
+};
 
 export interface Hook {
   id: string;
@@ -55,6 +58,35 @@ export interface JobRunSummary {
   status: JobRunStatus;
   attempt: number;
   duration_ms: number | null;
+  /** Size of captured output (newer backends; summaries carry no text). */
+  stdout_bytes?: number;
+  stderr_bytes?: number;
+}
+
+/** Keyset-paginated `GET /api/v1/runs` (newer backends). */
+export interface RunsPageResponse {
+  runs: JobRunSummary[];
+  next_cursor: string | null;
+}
+
+/** Run detail; newer backends omit stdout/stderr unless asked for them. */
+export type JobRunDetail = Omit<JobRun, 'stdout' | 'stderr'> & {
+  stdout?: string;
+  stderr?: string;
+  stdout_bytes?: number;
+  stderr_bytes?: number;
+};
+
+export type LogStream = 'stdout' | 'stderr' | 'combined';
+
+/** `GET /api/v1/runs/{id}/log` chunk. Offsets are byte offsets. */
+export interface RunLogChunk {
+  data: string;
+  offset: number;
+  next_offset: number;
+  total_bytes: number;
+  truncated: boolean;
+  complete: boolean;
 }
 
 export interface DashboardRunSummary extends JobRunSummary {
@@ -147,7 +179,19 @@ export interface HookRun {
   status: 'success' | 'failed' | 'timeout';
 }
 
-export type StatusResponse = DashboardSummary;
+export interface StatusResponse extends DashboardSummary {
+  /**
+   * IANA timezone the daemon (and therefore systemd) evaluates OnCalendar
+   * expressions in. `null` when the server could not determine it; absent on
+   * older daemons.
+   */
+  timezone?: string | null;
+}
+
+export interface SchedulePreviewResponse {
+  /** RFC 3339 timestamps of the next fire times. */
+  next_runs: string[];
+}
 
 export type SSEEventType =
   | 'task_created'
@@ -158,6 +202,8 @@ export type SSEEventType =
   | 'run_started'
   | 'run_completed'
   | 'run_failed'
+  | 'run_updated'
+  | 'run_output'
   | 'hook_fired'
   | 'heartbeat';
 
@@ -184,25 +230,28 @@ export interface UpdateTaskPayload extends Partial<CreateTaskPayload> {
   enabled?: boolean;
 }
 
+export type HookType = Hook['hook_type'];
+
 export interface CreateHookPayload {
   task_id: string;
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
-  timeout_secs?: number;
+  timeout_secs?: number | null;
   run_order?: number;
 }
 
 export interface CreateGlobalHookPayload {
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
-  timeout_secs?: number;
+  timeout_secs?: number | null;
   run_order?: number;
 }
 
 export interface UpdateHookPayload {
   hook_type?: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command?: string;
-  timeout_secs?: number;
+  /** Explicit null clears the timeout; omit the field to keep it. */
+  timeout_secs?: number | null;
   run_order?: number;
 }
 

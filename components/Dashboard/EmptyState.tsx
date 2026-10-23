@@ -22,7 +22,7 @@ export function EmptyState({ onCreate }: { onCreate: () => void }) {
           You haven&apos;t set up any scheduled tasks yet. Create your first task, or import
           existing crontab and systemd timers from this host.
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <button className="btn primary" onClick={onCreate}>
             <Icon.plus size={13} /> Create your first task
           </button>

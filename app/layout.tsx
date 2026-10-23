@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { ThemeBoot } from '@/components/Layout/ThemeBoot';
+import { Providers } from '@/components/Layout/Providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -16,17 +17,18 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light" data-density="comfortable">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap"
+          rel="preload"
+          href="/fonts/FiraCode-latin-wght.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
         />
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
       </head>
       <body>
         <ThemeBoot />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

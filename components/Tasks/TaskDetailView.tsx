@@ -11,9 +11,13 @@ import { TaskFormDrawer } from './TaskFormDrawer';
 import { useTaskDetail } from '@/hooks/useTasks';
 import { describeSchedule } from '@/lib/schedule';
 import { nextRunAt } from '@/lib/analytics';
-import { relTime, relTimeFuture, fmtDuration, fmtDateTimeLong, dayjs } from '@/lib/date';
+import { relTime, relTimeFuture, fmtDuration, fmtInZone } from '@/lib/date';
+import { useServerTimeZone } from '@/hooks/useSchedule';
+import { NextRunsPreview } from './NextRunsPreview';
 import { triggerTask, deleteTask } from '@/lib/api';
-import { hookTypeLabels } from '@/lib/hooks';
+import { HookFormDrawer } from '@/components/Hooks/HookFormDrawer';
+import { HookTable } from '@/components/Hooks/HookTable';
+import type { Hook } from '@/lib/types';
 import { useSWRConfig } from 'swr';
 import { navPush } from '@/lib/navigation';
 
@@ -25,6 +29,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const { detail } = useTaskDetail(taskId);
   const [tab, setTab] = useState<TabKey>('overview');
   const [editOpen, setEditOpen] = useState(false);
+  const [hookDrawer, setHookDrawer] = useState<{ open: boolean; hook: Hook | null }>({
+    open: false,
+    hook: null,
+  });
 
   const task = detail?.task;
   const runs = detail?.runs || [];
@@ -37,7 +45,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const successRate = success + failed ? (success / (success + failed)) * 100 : null;
 
   const cronViz = useMemo(() => vizForSchedule(task?.schedule || ''), [task?.schedule]);
-  const next = task ? nextRunAt(task.schedule) : null;
+  const { timeZone } = useServerTimeZone();
+  const next = task ? nextRunAt(task.schedule, timeZone) : null;
 
   if (!task) {
     return (
@@ -95,7 +104,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           </div>
           <div className="page-subtitle mono">{task.id}</div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <button className="btn" onClick={onTrigger}>
             <Icon.play size={13} /> Trigger now
           </button>
@@ -122,7 +131,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             {task.enabled && next ? relTimeFuture(next) : 'Disabled'}
           </div>
           <div className="mono fz-11 muted">
-            {task.enabled && next ? fmtDateTimeLong(next) : '—'}
+            {task.enabled && next ? fmtInZone(next, 'ddd, MMM D, HH:mm:ss', timeZone) : '—'}
           </div>
         </div>
         <div className="stat-card">
@@ -221,27 +230,12 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </div>
             <div className="card-body">
               <CronTimeline minute={cronViz.minute} hour={cronViz.hour} />
-              {next && (
-                <div className="mt-4 mono fz-12">
-                  <span className="muted">Next 5 runs</span>
-                  <div style={{ marginTop: 6, color: 'var(--text-secondary)' }}>
-                    {Array.from({ length: 5 }).map((_, i) => {
-                      const d = dayjs(next).add(i, 'hour');
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            padding: '4px 0',
-                            borderBottom: '1px dashed var(--border-subtle)',
-                          }}
-                        >
-                          {d.format('ddd, MMM D · HH:mm')}
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="mt-4">
+                <div className="muted fz-12" style={{ marginBottom: 6 }}>
+                  Next 5 runs
                 </div>
-              )}
+                <NextRunsPreview schedule={task.schedule} framed={false} />
+              </div>
             </div>
           </div>
         </div>
@@ -310,60 +304,24 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
       {tab === 'hooks' && (
         <div className="card">
           <div className="card-head">
-            <div className="card-title">Hooks · this task</div>
-            <button className="btn sm" onClick={() => navPush(router, `/hooks?task=${task.id}`)}>
-              <Icon.plus size={12} /> Add hook
-            </button>
+            <div className="card-title">Hooks for this task</div>
+            <div className="flex gap-2 items-center">
+              <button className="btn ghost sm" onClick={() => navPush(router, `/hooks?task=${task.id}`)}>
+                View with global hooks
+              </button>
+              <button className="btn sm" onClick={() => setHookDrawer({ open: true, hook: null })}>
+                <Icon.plus size={12} /> Add hook
+              </button>
+            </div>
           </div>
           <div className="card-body flush">
             {hooks.length === 0 ? (
-              <div
-                style={{
-                  padding: 40,
-                  textAlign: 'center',
-                  color: 'var(--text-muted)',
-                  fontSize: 13,
-                }}
-              >
-                No hooks configured. Add one to fire on success, failure, or retry
-                exhaustion.
+              <div className="empty-cell">
+                No hooks on this task. Add one to run a command after it succeeds, fails or runs out of
+                retries.
               </div>
             ) : (
-              <table className="t-table">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Command</th>
-                    <th>Timeout</th>
-                    <th>Order</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {hooks.map((h) => {
-                    const def = hookTypeLabels[h.hook_type];
-                    return (
-                      <tr key={h.id}>
-                        <td className="shrink">
-                          <Tag
-                            style={{
-                              color: `var(--c-${def.color})`,
-                              background: `var(--c-${def.color}-soft)`,
-                              borderColor: 'transparent',
-                            }}
-                          >
-                            {def.label}
-                          </Tag>
-                        </td>
-                        <td className="mono fz-12">{h.command}</td>
-                        <td className="shrink mono fz-12">
-                          {h.timeout_secs ? h.timeout_secs + 's' : 'default'}
-                        </td>
-                        <td className="shrink mono fz-12">{h.run_order}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <HookTable hooks={hooks} onEdit={(hook) => setHookDrawer({ open: true, hook })} />
             )}
           </div>
         </div>
@@ -402,6 +360,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           setEditOpen(false);
           mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/'));
         }}
+      />
+      <HookFormDrawer
+        open={hookDrawer.open}
+        hook={hookDrawer.hook}
+        taskId={task.id}
+        taskName={task.name}
+        onClose={() => setHookDrawer((d) => ({ ...d, open: false }))}
       />
     </>
   );

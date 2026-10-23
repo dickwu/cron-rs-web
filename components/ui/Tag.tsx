@@ -30,7 +30,14 @@ export function Tag({
     .join(' ');
   if (onClick) {
     return (
-      <button type="button" className={cls} style={style} onClick={onClick} title={title}>
+      <button
+        type="button"
+        className={cls}
+        style={style}
+        onClick={onClick}
+        title={title}
+        aria-pressed={active ? true : undefined}
+      >
         {children}
       </button>
     );
@@ -42,6 +49,3 @@ export function Tag({
   );
 }
 
-export function Kbd({ children }: { children: React.ReactNode }) {
-  return <span className="kbd">{children}</span>;
-}

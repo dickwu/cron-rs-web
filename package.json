@@ -1,6 +1,6 @@
 {
   "name": "cron-rs-web",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.14.22",
     "dayjs": "^1.11.21",
     "next": "^16.2.9",
     "react": "^19.2.7",

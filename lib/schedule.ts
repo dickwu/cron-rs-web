@@ -77,8 +77,42 @@ function normalizeNamedField(field: string, names: Array<[string, string]>): str
   return normalized;
 }
 
-function normalizeStepOrigin(field: string, origin: string): string {
-  return normalizeNamedField(field, []).replace('*/', `${origin}/`);
+/**
+ * Convert one numeric cron field (minute, hour, day-of-month, month) to the
+ * systemd OnCalendar component syntax:
+ *   `*`      -> `*`
+ *   `*` + `/N` -> `<origin>/N`  (systemd rejects a `*` step origin)
+ *   `A-B`    -> `A..B`
+ *   `A-B/N`  -> `A..B/N`
+ *   `A/N`    -> `A/N`
+ * Every comma-separated token is converted, not just the first one.
+ */
+function cronFieldToCalendar(field: string, origin: string, label: string): string {
+  if (field === '*' || field === '?') return '*';
+  return field
+    .split(',')
+    .map((token) => {
+      const [base, step, ...rest] = token.split('/');
+      if (rest.length > 0 || base === '' || step === '') {
+        throw new Error(`invalid cron ${label} field: ${field}`);
+      }
+      if (step !== undefined && !/^\d+$/.test(step)) {
+        throw new Error(`invalid cron ${label} step: ${token}`);
+      }
+      const suffix = step !== undefined ? `/${step}` : '';
+      if (base === '*') {
+        return step !== undefined ? `${origin}${suffix}` : '*';
+      }
+      const range = base.match(/^(\d+)-(\d+)$/);
+      if (range) {
+        return `${range[1]}..${range[2]}${suffix}`;
+      }
+      if (/^\d+$/.test(base)) {
+        return `${base}${suffix}`;
+      }
+      throw new Error(`unsupported cron ${label} value: ${token}`);
+    })
+    .join(',');
 }
 
 function dayNumberToName(value: string): string {
@@ -152,10 +186,14 @@ function cronFieldsToOnCalendar(fields: string[]): string {
     throw new Error('expected exactly 5 cron fields');
   }
 
-  const minute = normalizeStepOrigin(fields[0], '0');
-  const hour = normalizeStepOrigin(fields[1], '0');
-  const dayOfMonth = normalizeStepOrigin(fields[2], '1');
-  const month = normalizeNamedField(fields[3], monthNameValues);
+  const minute = cronFieldToCalendar(fields[0], '0', 'minute');
+  const hour = cronFieldToCalendar(fields[1], '0', 'hour');
+  const dayOfMonth = cronFieldToCalendar(fields[2], '1', 'day-of-month');
+  const month = cronFieldToCalendar(
+    normalizeNamedField(fields[3], monthNameValues),
+    '1',
+    'month',
+  );
   const dayOfWeek = normalizeDayOfWeek(fields[4]);
 
   if (dayOfWeek && dayOfMonth !== '*') {
@@ -170,66 +208,11 @@ function cronFieldsToOnCalendar(fields: string[]): string {
   return dayOfWeek ? `${dayOfWeek} ${date} ${time}` : `${date} ${time}`;
 }
 
-function canonicalizeOnCalendarExpression(expression: string): string {
-  const trimmed = expression.trim();
-  const parts = trimmed.split(/\s+/);
-
-  if (parts.length >= 3 && !parts[0].includes('-') && parts[1].includes('-')) {
-    const [day, date, time] = parts;
-    return `${day} ${canonicalizeOnCalendarExpression(`${date} ${time}`)}`;
-  }
-
-  if (parts.length !== 2) {
-    return trimmed;
-  }
-
-  const [date, time] = parts;
-  const dateParts = date.split('-');
-  const timeParts = time.split(':');
-
-  if (dateParts.length !== 3 || timeParts.length !== 3) {
-    return trimmed;
-  }
-
-  const normalizeDatePart = (value: string) =>
-    value === '*' ? value : String(Number(value));
-  const normalizeTimePart = (value: string) =>
-    value === '*' ? value : String(Number(value));
-
-  const normalizedDate = dateParts.map(normalizeDatePart).join('-');
-  const normalizedTime = timeParts.map(normalizeTimePart).join(':');
-
-  return `${normalizedDate} ${normalizedTime}`;
-}
-
 function isCronExpression(expression: string): boolean {
   const trimmed = expression.trim();
   if (!trimmed) return false;
   if (trimmed.startsWith('@')) return true;
   return trimmed.split(/\s+/).length === 5;
-}
-
-export function getImportedCronExpression(description: string): string | null {
-  const match = description.match(/^Imported from crontab line \d+:\s*(.+)$/);
-  if (!match) {
-    return null;
-  }
-
-  const importedLine = match[1].trim();
-  if (!importedLine) {
-    return null;
-  }
-
-  if (importedLine.startsWith('@')) {
-    return importedLine.split(/\s+/, 2)[0];
-  }
-
-  const fields = importedLine.split(/\s+/);
-  if (fields.length < 6) {
-    return null;
-  }
-
-  return fields.slice(0, 5).join(' ');
 }
 
 export function normalizeScheduleExpression(expression: string): string {
@@ -248,26 +231,6 @@ export function normalizeScheduleExpression(expression: string): string {
   }
 
   return trimmed;
-}
-
-export function getEditableScheduleExpression(schedule: string, description: string): string {
-  const importedCron = getImportedCronExpression(description);
-  if (!importedCron) {
-    return schedule;
-  }
-
-  try {
-    if (
-      canonicalizeOnCalendarExpression(normalizeScheduleExpression(importedCron)) ===
-      canonicalizeOnCalendarExpression(schedule)
-    ) {
-      return importedCron;
-    }
-  } catch {
-    return schedule;
-  }
-
-  return schedule;
 }
 
 function padTimePart(part: string): string {

@@ -4,7 +4,7 @@ import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/icons';
 import { useTasks } from '@/hooks/useTasks';
-import { useRunSummaries } from '@/hooks/useRuns';
+import { useStatus } from '@/hooks/useRuns';
 import { usePrefs } from '@/stores/prefsStore';
 import { navPush } from '@/lib/navigation';
 
@@ -37,11 +37,13 @@ export function Sidebar({ onOpenCmdK }: { onOpenCmdK: () => void }) {
   const theme = usePrefs((s) => s.theme);
   const toggleTheme = usePrefs((s) => s.toggleTheme);
   const { tasks } = useTasks();
-  const { runs } = useRunSummaries({ limit: 100 });
+  // The light status endpoint already carries a 24h run count; fetching
+  // 100 run rows just to show "100" was both wasteful and wrong.
+  const { status } = useStatus();
 
   const counts: Record<string, number | null> = {
     tasks: tasks.length,
-    runs: runs.length,
+    runs: status?.runs_24h ?? null,
     hooks: null,
     dashboard: null,
   };
@@ -69,7 +71,14 @@ export function Sidebar({ onOpenCmdK }: { onOpenCmdK: () => void }) {
             >
               <ItemIcon size={15} />
               {item.label}
-              {count != null && <span className="nav-count">{count}</span>}
+              {count != null && (
+                <span
+                  className="nav-count"
+                  title={item.key === 'runs' ? 'Runs in the last 24 hours' : undefined}
+                >
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
@@ -116,6 +125,7 @@ export function Sidebar({ onOpenCmdK }: { onOpenCmdK: () => void }) {
             className="btn ghost icon sm"
             data-tooltip={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             style={{ color: 'var(--sidebar-fg)' }}
           >
             {theme === 'dark' ? <Icon.sun size={14} /> : <Icon.moon size={14} />}
@@ -151,6 +161,9 @@ export function TopbarNav({ onOpenCmdK }: { onOpenCmdK: () => void }) {
             <button
               key={item.key}
               className={`nav-item ${active ? 'active' : ''}`}
+              aria-label={item.label}
+              aria-current={active ? 'page' : undefined}
+              title={item.label}
               onClick={() => navPush(router, item.href)}
             >
               <ItemIcon size={14} />
@@ -167,19 +180,18 @@ export function TopbarNav({ onOpenCmdK }: { onOpenCmdK: () => void }) {
           color: 'var(--sidebar-muted)',
           maxWidth: 220,
         }}
+        aria-label="Search"
         onClick={onOpenCmdK}
       >
-        <Icon.search size={13} /> Search…
-        <span
-          className="kbd"
-          style={{ marginLeft: 'auto', borderColor: 'var(--sidebar-border)' }}
-        >
+        <Icon.search size={13} /> <span>Search…</span>
+        <span className="kbd" style={{ marginLeft: 'auto', borderColor: 'var(--sidebar-border)' }}>
           ⌘K
         </span>
       </button>
       <button
         className="btn ghost icon sm"
         onClick={toggleTheme}
+        aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         style={{ color: 'var(--sidebar-fg)' }}
       >
         {theme === 'dark' ? <Icon.sun size={14} /> : <Icon.moon size={14} />}
