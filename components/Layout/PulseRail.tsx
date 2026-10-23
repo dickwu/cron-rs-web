@@ -2,10 +2,13 @@
 
 import React, { useMemo } from 'react';
 import { useRunSummaries } from '@/hooks/useRuns';
+import { useRollingSince } from '@/hooks/useRollingSince';
 import { buildPulse } from '@/lib/analytics';
 
 export function PulseRail() {
-  const since = useMemo(() => new Date(Date.now() - 3600 * 1000).toISOString(), []);
+  // Rolling 60-minute window; advances so long-lived tabs keep showing the
+  // last hour instead of everything since the page was opened.
+  const since = useRollingSince(3600 * 1000, 30_000);
   const { runs } = useRunSummaries({ since });
   const buckets = useMemo(() => buildPulse(runs), [runs]);
   const total = buckets.reduce((a, b) => a + b.success + b.failed + b.running + b.skipped, 0);
