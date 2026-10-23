@@ -70,9 +70,17 @@ export function relTimeFuture(input: string | number | Date): string {
 export function fmtDuration(ms: number | null | undefined): string {
   if (ms == null) return '—';
   if (ms < 1000) return ms + 'ms';
-  const d = dayjs.duration(ms);
   if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
-  return d.minutes() + 'm ' + d.seconds() + 's';
+  // Compute from the total so long runs keep their hours (and days) instead
+  // of wrapping at 60 minutes.
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  return `${minutes}m ${seconds}s`;
 }
 
 /**
