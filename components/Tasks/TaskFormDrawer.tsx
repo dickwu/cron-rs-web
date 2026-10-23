@@ -106,17 +106,32 @@ export function TaskFormDrawer({
       toast('Schedule is required', 'error');
       return;
     }
+    // Empty timeout means "no timeout" and is sent as an explicit null so the
+    // daemon clears any existing value; anything else must be a positive int.
+    const timeoutRaw = state.timeout_secs.trim();
+    const timeoutSecs = timeoutRaw === '' ? null : Number(timeoutRaw);
+    if (timeoutSecs !== null && (!Number.isInteger(timeoutSecs) || timeoutSecs <= 0)) {
+      toast('Timeout must be a positive whole number of seconds (or empty for none)', 'error');
+      return;
+    }
+    let schedule: string;
+    try {
+      schedule = normalizeScheduleExpression(state.schedule.trim());
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Invalid schedule', 'error');
+      return;
+    }
     setBusy(true);
     try {
       const payload: CreateTaskPayload = {
         name: state.name.trim(),
         command: state.command.trim(),
-        schedule: normalizeScheduleExpression(state.schedule.trim()),
+        schedule,
         tags: normalizeTags(state.tags),
         description: state.description.trim(),
         max_retries: state.max_retries,
         retry_delay_secs: state.retry_delay_secs,
-        timeout_secs: state.timeout_secs ? parseInt(state.timeout_secs, 10) : null,
+        timeout_secs: timeoutSecs,
         concurrency_policy: state.concurrency_policy,
         lock_key: state.lock_key.trim() || null,
         sandbox_profile: state.sandbox_profile.trim() || null,
@@ -340,7 +355,7 @@ export function TaskFormDrawer({
           <input
             className="input mono"
             type="number"
-            min={0}
+            min={1}
             value={state.timeout_secs}
             onChange={(e) => setField('timeout_secs', e.target.value)}
             placeholder="none"
@@ -377,8 +392,8 @@ export function TaskFormDrawer({
           placeholder="staff-api-boot"
         />
         <div className="help">
-          Tasks with the same key share <code>/run/cron-rs/locks/&lt;key&gt;.lock</code> to
-          avoid overlapping boot phases.
+          Tasks with the same key share one lock file (managed by the daemon), so they never
+          run at the same time.
         </div>
       </label>
 

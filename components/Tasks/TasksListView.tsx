@@ -53,6 +53,7 @@ export function TasksListView() {
         const s = q.toLowerCase();
         return (
           t.name.toLowerCase().includes(s) ||
+          (t.command ?? '').toLowerCase().includes(s) ||
           (t.tags || []).some((tag) => tag.toLowerCase().includes(s))
         );
       }),
@@ -371,13 +372,20 @@ function TaskRow({
       )}
       {showCommand && (
         <td>
-          <span
-            className="mono fz-12 truncate"
-            style={{ display: 'inline-block', maxWidth: 260, verticalAlign: 'middle' }}
-          >
-            {/* TaskSummary doesn't carry command — show schedule expr placeholder */}
-            {task.schedule}
-          </span>
+          {task.command ? (
+            <span
+              className="mono fz-12 truncate"
+              style={{ display: 'inline-block', maxWidth: 260, verticalAlign: 'middle' }}
+              title={task.command}
+            >
+              {task.command}
+            </span>
+          ) : (
+            // Older daemons don't include the command in task summaries.
+            <span className="muted" title="Not provided by this daemon version">
+              —
+            </span>
+          )}
         </td>
       )}
       {showTags && (

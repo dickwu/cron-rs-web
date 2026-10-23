@@ -19,7 +19,10 @@ export interface Task {
 export type TaskSummary = Pick<
   Task,
   'id' | 'name' | 'schedule' | 'tags' | 'enabled' | 'updated_at'
->;
+> & {
+  /** Present on daemons >= 0.1.6; older ones omit it from list responses. */
+  command?: string;
+};
 
 export interface Hook {
   id: string;
