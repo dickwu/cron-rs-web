@@ -6,11 +6,11 @@ Web dashboard for [cron-rs](https://github.com/dickwu/cron-rs) -- monitor and ma
 
 ## Features
 
-- **Real-time dashboard** -- live updates via SSE (task state, run status, hook events)
-- **Task management** -- create, edit, enable/disable, trigger, delete with schedule preview
-- **Hook settings in task detail** -- add, edit, and delete hooks from each task page
-- **Hooks catalog** -- `/hooks` lists only tasks that already have configured hooks
-- **Run history** -- filterable run list with terminal-style stdout/stderr viewer
+- **Live dashboard** -- one server-sent events (SSE) connection per tab keeps tasks and runs current; views fall back to polling when the stream is unavailable
+- **Task management** -- create, edit, enable/disable, trigger and delete tasks, with next-run previews in the daemon's timezone
+- **Hooks** -- create, edit and delete hooks from a task page or from `/hooks`, which also lists global hooks that run for every task
+- **Run history** -- server-side filters and infinite scroll over the full history, virtualized so long histories stay fast
+- **Log viewer** -- opens at the end of the log, loads earlier output on scroll, follows running jobs, searches, and downloads the full log; handles logs with 100k+ lines
 - **Settings page** -- review runtime state and manage the saved API URL override
 - **Bulk operations** -- select multiple tasks for batch enable/disable/delete
 - **Charts** -- run activity and failure rate visualization
@@ -43,7 +43,7 @@ Grab the latest from [GitHub Releases](https://github.com/dickwu/cron-rs-web/rel
 ```bash
 # 1. Install and start the backend on a Linux server (requires systemd)
 # See https://github.com/dickwu/cron-rs for installation
-cron-rs init --password 'change-this-password' --host 0.0.0.0
+cron-rs init --host 0.0.0.0   # prompts for the admin password
 cron-rs import
 cron-rs service install --host 0.0.0.0 --start
 
@@ -54,11 +54,13 @@ cron-rs-web-server service install --host 0.0.0.0 --start
 
 Open `http://your-server:3000` in your browser. By default, the dashboard
 connects to the cron-rs API on the same browser host at port `9746`, so
-`http://your-server:3000` uses `http://your-server:9746`.
+`http://your-server:3000` uses `http://your-server:9746`. The browser calls the
+API directly, so if your daemon restricts CORS, allow the dashboard's origin
+there (see the cron-rs README).
 
-Hook configuration stays in the task detail page (`/tasks?id=...`). The
-dedicated `/hooks` page is a read-only catalog so you can see which tasks
-already have hooks without duplicating hook-editing controls.
+`cron-rs-web-server` listens on `127.0.0.1` unless you pass `--host` (or set
+`CRON_RS_WEB_HOST`); use `--host 0.0.0.0` as above to reach it from other
+machines, or keep the default and use an SSH tunnel or reverse proxy.
 
 For a custom backend URL:
 
@@ -66,8 +68,19 @@ For a custom backend URL:
 cron-rs-web-server service install --host 0.0.0.0 --api-url http://api-host:9746 --start
 ```
 
-The static server also accepts `CRON_RS_WEB_HOST`, `CRON_RS_WEB_PORT`,
-`CRON_RS_API_URL`, and `CRON_RS_WEB_API_URL` for non-interactive server setup.
+Server options:
+
+| Flag | Environment | Default | Purpose |
+|------|-------------|---------|---------|
+| `--host`, `-H` | `CRON_RS_WEB_HOST` | `127.0.0.1` | Address to listen on |
+| `--port`, `-p` | `CRON_RS_WEB_PORT` | `3000` | Port to listen on |
+| `--api-url` | `CRON_RS_API_URL`, `CRON_RS_WEB_API_URL` | browser host, port 9746 | cron-rs API URL handed to the browser |
+| `--cors-origin` (repeatable) | `CRON_RS_WEB_CORS_ORIGIN` (comma-separated) | none | Origins allowed to fetch the dashboard's files cross-origin; `*` allows any. The dashboard itself doesn't need this. |
+
+A URL saved on the Settings page overrides `--api-url` for that browser only.
+
+The `service` subcommands manage a systemd user unit and only work on Linux.
+On macOS, run `cron-rs-web-server` directly (for example from launchd).
 
 Useful service commands:
 
@@ -84,25 +97,34 @@ cron-rs-web-server service uninstall
 cron-rs daemon          # API on :9746
 
 # In the cron-rs-web directory
-npm install
+npm ci
 npm run dev             # Next.js dev server on :3000
 
 # Expose the dev server from SSH
 npm run dev -- --hostname 0.0.0.0
+
+npm run lint            # type-check (tsc --noEmit)
+npm run build           # static export to out/
 ```
 
-The dev server proxies API calls to the cron-rs daemon at `localhost:9746`.
+There is no dev proxy: the app is a static export, so the browser calls the
+daemon directly at `http://<browser host>:9746` (or the URL set on the login or
+Settings page).
 
 ## Tech Stack
 
 | Package | Purpose |
 |---------|---------|
 | Next.js 16 | App Router, static export |
-| Ant Design 6 | UI components |
-| @ant-design/charts 2 | Data visualization |
-| @ant-design/icons 6 | Icons |
-| SWR | Data fetching with cache invalidation |
+| React 19 | UI (hand-written components and SVG charts, no UI kit) |
+| SWR 2 | Data fetching and caching |
+| @tanstack/react-virtual | Virtualized runs list |
+| zustand | Small client stores (preferences, dashboard cache) |
+| dayjs | Date formatting |
 | TypeScript | Type safety |
+
+Fira Code is self-hosted from `public/fonts` (SIL Open Font License 1.1), so
+the dashboard makes no third-party requests.
 
 ## Production Build
 
