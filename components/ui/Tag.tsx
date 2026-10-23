@@ -49,6 +49,3 @@ export function Tag({
   );
 }
 
-export function Kbd({ children }: { children: React.ReactNode }) {
-  return <span className="kbd">{children}</span>;
-}

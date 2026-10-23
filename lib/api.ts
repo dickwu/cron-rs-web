@@ -1,8 +1,6 @@
 import { getToken, clearToken, getApiUrl } from './auth';
 import type {
   Task,
-  TaskDetailResponse,
-  TaskSummary,
   Hook,
   JobRun,
   JobRunDetail,
@@ -10,9 +8,6 @@ import type {
   RunsPageResponse,
   RunLogChunk,
   LogStream,
-  HookRun,
-  StatusResponse,
-  SchedulePreviewResponse,
   CreateTaskPayload,
   UpdateTaskPayload,
   CreateHookPayload,
@@ -83,24 +78,7 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   });
 }
 
-// Status
-export async function getStatus(): Promise<StatusResponse> {
-  return fetchApi<StatusResponse>('/api/v1/status');
-}
-
 // Tasks
-export async function getTasks(): Promise<TaskSummary[]> {
-  return fetchApi<TaskSummary[]>('/api/v1/tasks');
-}
-
-export async function getTask(id: string): Promise<Task> {
-  return fetchApi<Task>(`/api/v1/tasks/${id}`);
-}
-
-export async function getTaskDetail(id: string): Promise<TaskDetailResponse> {
-  return fetchApi<TaskDetailResponse>(`/api/v1/tasks/${id}/detail`);
-}
-
 export async function createTask(payload: CreateTaskPayload): Promise<Task> {
   return fetchApi<Task>('/api/v1/tasks', {
     method: 'POST',
@@ -223,7 +201,7 @@ export interface RunLogRequest {
   tail?: number;
 }
 
-export function runLogPath(id: string, req: RunLogRequest): string {
+function runLogPath(id: string, req: RunLogRequest): string {
   const sp = new URLSearchParams();
   sp.set('stream', req.stream);
   if (req.tail != null) sp.set('tail', String(req.tail));
@@ -303,18 +281,6 @@ export function saveBlob(blob: Blob, filename: string): void {
 }
 
 // Hooks
-export async function getHooks(taskId: string): Promise<Hook[]> {
-  return fetchApi<Hook[]>(`/api/v1/tasks/${taskId}/hooks`);
-}
-
-export async function getAllHooks(): Promise<Hook[]> {
-  return fetchApi<Hook[]>('/api/v1/hooks');
-}
-
-export async function getGlobalHooks(): Promise<Hook[]> {
-  return fetchApi<Hook[]>('/api/v1/hooks/global');
-}
-
 export async function createHook(payload: CreateHookPayload): Promise<Hook> {
   return fetchApi<Hook>(`/api/v1/tasks/${payload.task_id}/hooks`, {
     method: 'POST',
@@ -342,28 +308,12 @@ export async function deleteHook(hookId: string): Promise<void> {
   });
 }
 
-// Hook Runs
-export async function getHookRuns(runId: string): Promise<HookRun[]> {
-  return fetchApi<HookRun[]>(`/api/v1/runs/${runId}/hooks`);
-}
-
 // Schedule preview
 export function schedulePreviewPath(schedule: string, count: number = 5): string {
   return `/api/v1/schedule/preview?schedule=${encodeURIComponent(schedule)}&count=${count}`;
 }
 
-export async function getSchedulePreview(
-  schedule: string,
-  count: number = 5
-): Promise<SchedulePreviewResponse> {
-  return fetchApi<SchedulePreviewResponse>(schedulePreviewPath(schedule, count));
-}
-
 // Settings
-export async function getSettings(): Promise<AppSettings> {
-  return fetchApi<AppSettings>('/api/v1/settings');
-}
-
 export async function updateSettings(payload: UpdateSettingsPayload): Promise<AppSettings> {
   return fetchApi<AppSettings>('/api/v1/settings', {
     method: 'PUT',

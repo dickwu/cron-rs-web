@@ -105,8 +105,4 @@ export function fmtInZone(
   return d.format(format);
 }
 
-export function nowTs(): number {
-  return dayjs().valueOf();
-}
-
 export { dayjs };
