@@ -173,6 +173,8 @@ export type SSEEventType =
   | 'run_started'
   | 'run_completed'
   | 'run_failed'
+  | 'run_updated'
+  | 'run_output'
   | 'hook_fired'
   | 'heartbeat';
 

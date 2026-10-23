@@ -20,6 +20,7 @@ import {
   getStoredApiUrl,
 } from '@/lib/auth';
 import { swrFetcher, updateSettings } from '@/lib/api';
+import { notifyConnectionChanged } from '@/lib/sseBus';
 import { fmtDateTime } from '@/lib/date';
 import type { AppSettings } from '@/lib/types';
 
@@ -110,6 +111,7 @@ export function SettingsScreen() {
     setHealthState('idle');
     // Everything cached came from the previous backend.
     mutate(() => true, undefined, { revalidate: true });
+    notifyConnectionChanged();
   };
 
   const handleSaveApi = () => {

@@ -8,7 +8,7 @@ import { Topbar, type Crumb } from './Topbar';
 import { PulseRail } from './PulseRail';
 import { CmdK } from './CmdK';
 import { Toaster } from '@/components/ui/Toaster';
-import { useSSE } from '@/hooks/useSSE';
+import { useSSEStatus } from './SSEProvider';
 import { usePrefs } from '@/stores/prefsStore';
 import { navPush } from '@/lib/navigation';
 
@@ -33,7 +33,7 @@ function defaultCrumbs(pathname: string): Crumb[] {
 
 export function AppShell({ children, header }: AppShellProps) {
   const layout = usePrefs((s) => s.layout);
-  const { connectionStatus } = useSSE();
+  const connectionStatus = useSSEStatus();
   const [cmdOpen, setCmdOpen] = useState(false);
   const pathname = usePathname() || '/';
   const router = useRouter();
