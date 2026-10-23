@@ -8,19 +8,49 @@ import type { JobRun } from '@/lib/types';
 
 interface Line {
   text: string;
-  kind: 'stdout' | 'stderr';
+  kind: 'stdout' | 'stderr' | 'section';
+  /** 1-based line number within its stream (absent for section headers). */
+  num?: number;
 }
 
+/**
+ * Split captured output into lines, keeping blank lines (they are often
+ * meaningful separators in logs). Only the single empty entry produced by a
+ * trailing newline is dropped; CRLF endings are normalized.
+ */
+function splitOutput(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
+/**
+ * The daemon stores stdout and stderr as two separate captures with no
+ * timing information, so their relative order is unknown. Rather than
+ * pretending to interleave them, show stdout first and stderr in its own
+ * clearly labelled section.
+ */
 function buildLinesFrom(run: JobRun): Line[] {
-  const out = (run.stdout || '').split('\n').filter(Boolean).map((t) => ({
-    text: t,
-    kind: 'stdout' as const,
-  }));
-  const err = (run.stderr || '').split('\n').filter(Boolean).map((t) => ({
-    text: t,
-    kind: 'stderr' as const,
-  }));
-  return [...out, ...err];
+  const out = splitOutput(run.stdout);
+  const err = splitOutput(run.stderr);
+  const lines: Line[] = [];
+  if (out.length && err.length) lines.push({ text: 'stdout', kind: 'section' });
+  out.forEach((text, i) => lines.push({ text, kind: 'stdout', num: i + 1 }));
+  if (err.length) {
+    lines.push({ text: 'stderr', kind: 'section' });
+    err.forEach((text, i) => lines.push({ text, kind: 'stderr', num: i + 1 }));
+  }
+  return lines;
+}
+
+function copyableOutput(run: JobRun): string {
+  const out = run.stdout || '';
+  const err = run.stderr || '';
+  if (out && err) {
+    return `===== stdout =====\n${out.replace(/\n$/, '')}\n===== stderr =====\n${err}`;
+  }
+  return out || err;
 }
 
 export function Terminal({ run }: { run: JobRun }) {
@@ -50,7 +80,7 @@ export function Terminal({ run }: { run: JobRun }) {
   );
 
   const handleCopy = async () => {
-    const text = [run.stdout, run.stderr].filter(Boolean).join('\n');
+    const text = copyableOutput(run);
     const ok = await copyText(text);
     if (!ok) {
       toast('Copy failed', 'error');
@@ -86,6 +116,7 @@ export function Terminal({ run }: { run: JobRun }) {
   const lower = search.trim().toLowerCase();
   const isRunning = run.status === 'running';
   const hasOutput = Boolean(run.stdout || run.stderr);
+  const contentLines = lines.filter((l) => l.kind !== 'section').length;
 
   return (
     <div className="terminal" style={{ position: 'relative' }}>
@@ -153,24 +184,45 @@ export function Terminal({ run }: { run: JobRun }) {
               </span>
             ) : (
               <span className="live">
-                <span className="pulse" /> live · {lines.length}
+                <span className="pulse" /> live · {contentLines}
               </span>
             ))}
         </div>
       </div>
       <div className="terminal-body" ref={bodyRef} onScroll={onScroll}>
         {lines.map((l, i) => {
+          if (l.kind === 'section') {
+            return (
+              <div
+                key={i}
+                className="ln section"
+                style={{
+                  color: l.text === 'stderr' ? 'var(--terminal-stderr)' : 'var(--terminal-dim)',
+                  borderTop: i > 0 ? '1px dashed rgba(255,255,255,0.15)' : undefined,
+                  marginTop: i > 0 ? 6 : 0,
+                  paddingTop: i > 0 ? 6 : 0,
+                  fontSize: 11,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span className="num" />
+                <span className="txt">── {l.text} ──</span>
+              </div>
+            );
+          }
           const hit = lower && l.text.toLowerCase().includes(lower);
           return (
             <div key={i} className={`ln ${l.kind} ${hit ? 'search-hit' : ''}`}>
-              <span className="num">{i + 1}</span>
-              <span className="txt">{l.text}</span>
+              <span className="num">{l.num}</span>
+              {/* Non-breaking space keeps blank lines at full height. */}
+              <span className="txt">{l.text === '' ? '\u00a0' : l.text}</span>
             </div>
           );
         })}
         {isRunning && !paused && (
           <div className="ln">
-            <span className="num">{lines.length + 1}</span>
+            <span className="num" />
             <span className="txt">
               <span className="terminal-cursor" />
             </span>
