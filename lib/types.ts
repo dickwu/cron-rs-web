@@ -58,6 +58,35 @@ export interface JobRunSummary {
   status: JobRunStatus;
   attempt: number;
   duration_ms: number | null;
+  /** Size of captured output (newer backends; summaries carry no text). */
+  stdout_bytes?: number;
+  stderr_bytes?: number;
+}
+
+/** Keyset-paginated `GET /api/v1/runs` (newer backends). */
+export interface RunsPageResponse {
+  runs: JobRunSummary[];
+  next_cursor: string | null;
+}
+
+/** Run detail; newer backends omit stdout/stderr unless asked for them. */
+export type JobRunDetail = Omit<JobRun, 'stdout' | 'stderr'> & {
+  stdout?: string;
+  stderr?: string;
+  stdout_bytes?: number;
+  stderr_bytes?: number;
+};
+
+export type LogStream = 'stdout' | 'stderr' | 'combined';
+
+/** `GET /api/v1/runs/{id}/log` chunk. Offsets are byte offsets. */
+export interface RunLogChunk {
+  data: string;
+  offset: number;
+  next_offset: number;
+  total_bytes: number;
+  truncated: boolean;
+  complete: boolean;
 }
 
 export interface DashboardRunSummary extends JobRunSummary {

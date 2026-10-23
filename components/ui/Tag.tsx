@@ -30,7 +30,14 @@ export function Tag({
     .join(' ');
   if (onClick) {
     return (
-      <button type="button" className={cls} style={style} onClick={onClick} title={title}>
+      <button
+        type="button"
+        className={cls}
+        style={style}
+        onClick={onClick}
+        title={title}
+        aria-pressed={active ? true : undefined}
+      >
         {children}
       </button>
     );

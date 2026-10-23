@@ -24,7 +24,8 @@ export function CmdK({ open, onClose }: { open: boolean; onClose: () => void }) 
   const router = useRouter();
   const toggleTheme = usePrefs((s) => s.toggleTheme);
   const { tasks } = useTasks();
-  const { runs } = useRunSummaries({ limit: 30 });
+  // Only fetch while the palette is open.
+  const { runs } = useRunSummaries({ limit: 30 }, { enabled: open });
 
   const [q, setQ] = useState('');
   const [focus, setFocus] = useState(0);

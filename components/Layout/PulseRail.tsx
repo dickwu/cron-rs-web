@@ -9,7 +9,8 @@ export function PulseRail() {
   // Rolling 60-minute window; advances so long-lived tabs keep showing the
   // last hour instead of everything since the page was opened.
   const since = useRollingSince(3600 * 1000, 30_000);
-  const { runs } = useRunSummaries({ since });
+  // Summaries only (no output); 500 is the backend's page cap.
+  const { runs } = useRunSummaries({ since, limit: 500 }, { refreshInterval: 15000 });
   const buckets = useMemo(() => buildPulse(runs), [runs]);
   const total = buckets.reduce((a, b) => a + b.success + b.failed + b.running + b.skipped, 0);
   const failed = buckets.reduce((a, b) => a + b.failed, 0);

@@ -5,6 +5,11 @@ import type {
   TaskSummary,
   Hook,
   JobRun,
+  JobRunDetail,
+  JobRunSummary,
+  RunsPageResponse,
+  RunLogChunk,
+  LogStream,
   HookRun,
   StatusResponse,
   SchedulePreviewResponse,
@@ -127,26 +132,174 @@ export async function disableTask(id: string): Promise<void> {
 }
 
 // Runs
-export async function getRuns(params?: {
+
+export interface RunsQuery {
   task_id?: string;
   status?: string;
-  limit?: number;
-  offset?: number;
   since?: string;
-}): Promise<JobRun[]> {
-  const searchParams = new URLSearchParams();
-  searchParams.set('include_output', 'true');
-  if (params?.task_id) searchParams.set('task_id', params.task_id);
-  if (params?.status) searchParams.set('status', params.status);
-  if (params?.limit) searchParams.set('limit', String(params.limit));
-  if (params?.offset) searchParams.set('offset', String(params.offset));
-  if (params?.since) searchParams.set('since', params.since);
-  const qs = searchParams.toString();
-  return fetchApi<JobRun[]>(`/api/v1/runs${qs ? `?${qs}` : ''}`);
+  limit?: number;
 }
 
-export async function getRun(id: string): Promise<JobRun> {
-  return fetchApi<JobRun>(`/api/v1/runs/${id}`);
+/** Normalised page of run summaries, whichever backend generation answered. */
+export interface RunsPage {
+  runs: JobRunSummary[];
+  /** Keyset cursor for the next (older) page; null when exhausted or legacy. */
+  nextCursor: string | null;
+  /** Whether older rows may exist beyond this page. */
+  hasMore: boolean;
+  /** Older backends return a bare array and only support offset paging. */
+  legacy: boolean;
+}
+
+/** Newer backends cap `limit` at 500. */
+export const RUNS_PAGE_MAX = 500;
+
+/**
+ * Path for a run-summary list request. Never asks for output: summaries are
+ * what every list view needs, and newer backends don't support output here.
+ */
+export function runsListPath(
+  query: RunsQuery,
+  page?: { before?: string | null; offset?: number },
+): string {
+  const sp = new URLSearchParams();
+  sp.set('limit', String(Math.min(query.limit ?? 50, RUNS_PAGE_MAX)));
+  if (query.task_id) sp.set('task_id', query.task_id);
+  if (query.status) sp.set('status', query.status);
+  if (query.since) sp.set('since', query.since);
+  if (page?.before) sp.set('before', page.before);
+  if (page?.offset) sp.set('offset', String(page.offset));
+  return `/api/v1/runs?${sp.toString()}`;
+}
+
+function requestedLimit(path: string): number {
+  const q = path.indexOf('?');
+  const limit = Number(new URLSearchParams(q === -1 ? '' : path.slice(q + 1)).get('limit'));
+  return Number.isFinite(limit) && limit > 0 ? limit : 50;
+}
+
+/** Fetch a run list and normalise `{runs, next_cursor}` vs. a legacy array. */
+export async function fetchRunsPage(path: string): Promise<RunsPage> {
+  const body = await fetchApi<RunsPageResponse | JobRunSummary[]>(path);
+  if (Array.isArray(body)) {
+    return {
+      runs: body,
+      nextCursor: null,
+      hasMore: body.length >= requestedLimit(path),
+      legacy: true,
+    };
+  }
+  const runs = Array.isArray(body?.runs) ? body.runs : [];
+  return {
+    runs,
+    nextCursor: body?.next_cursor ?? null,
+    hasMore: !!body?.next_cursor,
+    legacy: false,
+  };
+}
+
+/** Run metadata (newer backends return no stdout/stderr here). */
+export async function getRun(id: string): Promise<JobRunDetail> {
+  return fetchApi<JobRunDetail>(`/api/v1/runs/${encodeURIComponent(id)}`);
+}
+
+/**
+ * Legacy fallback for backends without the log endpoint: the full captured
+ * output, fetched once on demand (never polled).
+ */
+export async function getRunWithOutput(id: string, signal?: AbortSignal): Promise<JobRun> {
+  return fetchApi<JobRun>(`/api/v1/runs/${encodeURIComponent(id)}?include_output=true`, {
+    signal,
+  });
+}
+
+export interface RunLogRequest {
+  stream: LogStream;
+  /** Byte offset to read from. */
+  offset?: number;
+  /** Max bytes to return (server default 64 KiB, max 1 MiB). */
+  limit?: number;
+  /** Read the last N bytes instead of from an offset. */
+  tail?: number;
+}
+
+export function runLogPath(id: string, req: RunLogRequest): string {
+  const sp = new URLSearchParams();
+  sp.set('stream', req.stream);
+  if (req.tail != null) sp.set('tail', String(req.tail));
+  else if (req.offset != null) sp.set('offset', String(req.offset));
+  if (req.limit != null) sp.set('limit', String(req.limit));
+  return `/api/v1/runs/${encodeURIComponent(id)}/log?${sp.toString()}`;
+}
+
+/** One byte-range chunk of a run's output. 404 means the backend predates it. */
+export async function getRunLog(
+  id: string,
+  req: RunLogRequest,
+  signal?: AbortSignal,
+): Promise<RunLogChunk> {
+  return fetchApi<RunLogChunk>(runLogPath(id, req), { signal });
+}
+
+/**
+ * Download a run's full output via the streaming download endpoint. Uses the
+ * File System Access API when available so the log streams straight to disk;
+ * otherwise buffers it into a Blob. Returns false if the endpoint is missing
+ * (older backend) so the caller can fall back.
+ */
+export async function downloadRunLog(
+  id: string,
+  stream: LogStream,
+  filename: string,
+): Promise<boolean> {
+  const token = getToken();
+  const res = await fetch(
+    `${getApiUrl()}/api/v1/runs/${encodeURIComponent(id)}/log/download?stream=${stream}`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (res.status === 404 || res.status === 405) return false;
+  if (res.status === 401) {
+    clearToken();
+    window.location.href = '/login';
+    throw new ApiError('Unauthorized', 401);
+  }
+  if (!res.ok || !res.body) throw new ApiError(`Download failed: ${res.status}`, res.status);
+
+  type SavePicker = (opts: {
+    suggestedName?: string;
+    types?: Array<{ description: string; accept: Record<string, string[]> }>;
+  }) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }>;
+  const picker = (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
+  if (picker) {
+    let handle;
+    try {
+      handle = await picker({
+        suggestedName: filename,
+        types: [{ description: 'Log file', accept: { 'text/plain': ['.log', '.txt'] } }],
+      });
+    } catch (err) {
+      await res.body.cancel();
+      if (err instanceof DOMException && err.name === 'AbortError') return true; // user cancelled
+      throw err;
+    }
+    await res.body.pipeTo(await handle.createWritable());
+    return true;
+  }
+
+  const blob = await res.blob();
+  saveBlob(blob, filename);
+  return true;
+}
+
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // Hooks
