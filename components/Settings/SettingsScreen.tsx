@@ -115,14 +115,23 @@ export function SettingsScreen() {
   };
 
   const handleSaveApi = () => {
-    if (!apiUrlField.trim()) {
-      toast('API URL is required', 'error');
+    const value = apiUrlField.trim();
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(value);
+    } catch {
+      parsed = null;
+    }
+    if (!parsed || !/^https?:$/.test(parsed.protocol)) {
+      toast('Enter a full http:// or https:// address, for example http://server:9746', 'error');
       return;
     }
     saveApiUrlIfOverride(apiUrlField);
     refreshUrlState();
     toast(
-      getStoredApiUrl() ? 'API URL override saved' : 'Using the default API URL',
+      getStoredApiUrl()
+        ? 'API URL saved. This browser now uses it.'
+        : 'That is already the default, so nothing was overridden',
       'success',
     );
   };
@@ -130,7 +139,7 @@ export function SettingsScreen() {
   const handleResetApi = () => {
     clearApiUrl();
     refreshUrlState();
-    toast(runtimeUrl ? 'API URL reset to the server default' : 'API URL reset to browser default', 'info');
+    toast(runtimeUrl ? 'Now using the server default API URL' : 'Now using the browser default API URL', 'info');
   };
 
   const handleCheckHealth = async () => {
@@ -320,7 +329,11 @@ export function SettingsScreen() {
               <input
                 className="input mono"
                 value={apiUrlField}
-                onChange={(e) => setApiUrlField(e.target.value)}
+                onChange={(e) => {
+                  setApiUrlField(e.target.value);
+                  setHealthState('idle');
+                }}
+                aria-label="API URL"
                 placeholder="http://server:9746"
               />
               <div className="help">
@@ -330,7 +343,7 @@ export function SettingsScreen() {
             </label>
             <div className="flex gap-2 mt-3">
               <button className="btn primary" onClick={handleSaveApi}>
-                Save
+                Save API URL
               </button>
               <button
                 className="btn"
@@ -345,6 +358,7 @@ export function SettingsScreen() {
             </div>
             {healthState === 'ok' && (
               <div
+                role="status"
                 className="mt-3"
                 style={{
                   padding: '8px 12px',
@@ -354,12 +368,13 @@ export function SettingsScreen() {
                   fontSize: 12,
                 }}
               >
-                <Icon.check size={12} style={{ verticalAlign: 'middle' }} /> Health
-                check OK
+                <Icon.check size={12} style={{ verticalAlign: 'middle' }} /> The daemon
+                answered the health check at this address.
               </div>
             )}
             {healthState === 'fail' && (
               <div
+                role="alert"
                 className="mt-3"
                 style={{
                   padding: '8px 12px',
@@ -369,8 +384,9 @@ export function SettingsScreen() {
                   fontSize: 12,
                 }}
               >
-                <Icon.alert size={12} style={{ verticalAlign: 'middle' }} /> Could not
-                reach the health endpoint
+                <Icon.alert size={12} style={{ verticalAlign: 'middle' }} /> No answer from{' '}
+                <span className="mono">/api/v1/health</span> at this address. Check that the daemon is
+                running, the host and port are right, and the daemon allows this web origin (CORS).
               </div>
             )}
             <dl className="dl mt-4">
@@ -400,7 +416,7 @@ export function SettingsScreen() {
               </dd>
               <dt>Server default</dt>
               <dd className="mono">
-                {runtimeUrl ?? <span className="muted">Not set (runtime-config.js)</span>}
+                {runtimeUrl ?? <span className="muted">Not set</span>}
               </dd>
               <dt>Browser default</dt>
               <dd className="mono">{browserDefault}</dd>
