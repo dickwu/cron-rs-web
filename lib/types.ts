@@ -230,25 +230,28 @@ export interface UpdateTaskPayload extends Partial<CreateTaskPayload> {
   enabled?: boolean;
 }
 
+export type HookType = Hook['hook_type'];
+
 export interface CreateHookPayload {
   task_id: string;
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
-  timeout_secs?: number;
+  timeout_secs?: number | null;
   run_order?: number;
 }
 
 export interface CreateGlobalHookPayload {
   hook_type: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command: string;
-  timeout_secs?: number;
+  timeout_secs?: number | null;
   run_order?: number;
 }
 
 export interface UpdateHookPayload {
   hook_type?: 'on_failure' | 'on_success' | 'on_retry_exhausted';
   command?: string;
-  timeout_secs?: number;
+  /** Explicit null clears the timeout; omit the field to keep it. */
+  timeout_secs?: number | null;
   run_order?: number;
 }
 
