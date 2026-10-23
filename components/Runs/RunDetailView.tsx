@@ -4,7 +4,14 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/icons';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { Terminal } from './Terminal';
+import dynamic from 'next/dynamic';
+import { saveRunOutput } from '@/lib/runLog';
+
+// The log viewer is the heaviest component on the page; load it in its own chunk.
+const Terminal = dynamic(() => import('./Terminal').then((m) => m.Terminal), {
+  ssr: false,
+  loading: () => <div className="terminal" style={{ height: 160 }} aria-busy="true" />,
+});
 import { useRun, useHookRuns } from '@/hooks/useRuns';
 import { useTask } from '@/hooks/useTasks';
 import { fmtDuration, fmtDateTimeLong, relTime } from '@/lib/date';
@@ -16,7 +23,7 @@ import { navPush } from '@/lib/navigation';
 export function RunDetailView({ runId }: { runId: string }) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const { run } = useRun(runId);
+  const { run, isError } = useRun(runId);
   const { task } = useTask(run?.task_id || null);
   const { hookRuns } = useHookRuns(runId);
 
@@ -31,32 +38,21 @@ export function RunDetailView({ runId }: { runId: string }) {
     }
   };
 
-  const handleExport = () => {
+  const [exporting, setExporting] = React.useState(false);
+  const handleExport = async () => {
     if (!run) return;
-    const parts = [
-      `# run ${run.id}`,
-      `# task: ${task?.name || run.task_id} (${run.task_id})`,
-      `# status: ${run.status}    exit: ${run.exit_code ?? '—'}    attempt: ${run.attempt}`,
-      `# started: ${run.started_at}    finished: ${run.finished_at ?? 'still running'}`,
-      `# duration: ${fmtDuration(run.duration_ms)}`,
-      '',
-      '## stdout',
-      run.stdout || '(empty)',
-      '',
-      '## stderr',
-      run.stderr || '(empty)',
-      '',
-    ];
-    const blob = new Blob([parts.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${run.id}.log`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    toast('Log downloaded', 'success');
+    setExporting(true);
+    try {
+      // Streams the full log from the server; never loads it into the page.
+      await saveRunOutput(run.id, 'combined');
+    } catch (err) {
+      toast(
+        `Couldn't download the log: ${err instanceof Error ? err.message : 'request failed'}`,
+        'error',
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (!run) {
@@ -64,7 +60,14 @@ export function RunDetailView({ runId }: { runId: string }) {
       <div
         style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}
       >
-        <Icon.spinner size={20} />
+        {isError ? (
+          <span>
+            Couldn&apos;t load this run. It may have been pruned by run retention, or the
+            server is unreachable.
+          </span>
+        ) : (
+          <Icon.spinner size={20} />
+        )}
       </div>
     );
   }
@@ -94,8 +97,8 @@ export function RunDetailView({ runId }: { runId: string }) {
           <button className="btn" onClick={handleReRun}>
             <Icon.refresh size={13} /> Re-run
           </button>
-          <button className="btn" onClick={handleExport}>
-            <Icon.download size={13} /> Export logs
+          <button className="btn" onClick={handleExport} disabled={exporting}>
+            <Icon.download size={13} /> {exporting ? 'Downloading…' : 'Download log'}
           </button>
         </div>
       </div>
@@ -182,11 +185,10 @@ export function RunDetailView({ runId }: { runId: string }) {
         <div className="flex items-center between mb-3">
           <div className="card-title">Output</div>
           <span className="muted fz-12">
-            stdout + stderr ·{' '}
-            {run.status === 'running' ? 'streaming' : 'captured at finish'}
+            {run.status === 'running' ? 'Following new output' : 'Opens at the end of the log'}
           </span>
         </div>
-        <Terminal run={run} />
+        <Terminal key={run.id} run={run} />
       </div>
 
       <div className="card">
