@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/icons';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Tag } from '@/components/ui/Tag';
 import { useRunSummaries } from '@/hooks/useRuns';
+import { useRollingSince } from '@/hooks/useRollingSince';
 import { useTasks } from '@/hooks/useTasks';
 import { relTime, fmtDuration } from '@/lib/date';
 import { navPush } from '@/lib/navigation';
@@ -15,20 +16,31 @@ const STATUS_FILTERS: Array<{ k: string; label: string }> = [
   { k: 'success', label: 'Success' },
   { k: 'failed', label: 'Failed' },
   { k: 'running', label: 'Running' },
+  { k: 'retrying', label: 'Retrying' },
   { k: 'skipped', label: 'Skipped' },
 ];
 
+const PAGE_SIZE = 50;
+const FETCH_STEP = 1000;
+const FETCH_MAX = 10_000;
+const WINDOW_MS = 7 * 86400 * 1000;
+
 export function RunsListView() {
   const router = useRouter();
-  const since = useMemo(() => new Date(Date.now() - 7 * 86400 * 1000).toISOString(), []);
+  // Rolling 7-day window; advances every minute instead of freezing at mount.
+  const since = useRollingSince(WINDOW_MS);
   // Cap the fetch: at production volume an uncapped 7-day window is tens of
-  // thousands of rows per poll. The list shows the most recent runs first.
-  const { runs } = useRunSummaries({ since, limit: 1000 });
+  // thousands of rows per poll. The list shows the most recent runs first and
+  // the user can raise the cap with "Load more".
+  const [limit, setLimit] = useState(FETCH_STEP);
+  const { runs } = useRunSummaries({ since, limit });
+  const hitLimit = runs.length >= limit;
   const { tasks } = useTasks();
   const tasksById = useMemo(() => Object.fromEntries(tasks.map((t) => [t.id, t])), [tasks]);
 
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [page, setPage] = useState(0);
 
   const enriched = useMemo(
     () =>
@@ -59,10 +71,15 @@ export function RunsListView() {
         (r) => r.status === 'failed' || r.status === 'timeout' || r.status === 'crashed',
       ).length,
       running: enriched.filter((r) => r.status === 'running').length,
+      retrying: enriched.filter((r) => r.status === 'retrying').length,
       skipped: enriched.filter((r) => r.status === 'skipped').length,
     }),
     [enriched],
   );
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageRows = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
 
   return (
     <>
@@ -70,7 +87,8 @@ export function RunsListView() {
         <div>
           <div className="page-title">Runs</div>
           <div className="page-subtitle">
-            {filtered.length} of {enriched.length} runs
+            {filtered.length} of {enriched.length} runs · last 7 days
+            {hitLimit && ` · most recent ${limit.toLocaleString()} loaded`}
           </div>
         </div>
         <div className="flex gap-2">
@@ -88,7 +106,10 @@ export function RunsListView() {
               className="input"
               placeholder="Search by task or run id…"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setPage(0);
+              }}
               style={{ paddingLeft: 30, width: 280 }}
             />
           </div>
@@ -101,7 +122,10 @@ export function RunsListView() {
             key={opt.k}
             active={statusFilter === opt.k}
             subtle={statusFilter !== opt.k}
-            onClick={() => setStatusFilter(opt.k)}
+            onClick={() => {
+              setStatusFilter(opt.k);
+              setPage(0);
+            }}
           >
             {opt.label}{' '}
             <span className="mono" style={{ marginLeft: 4, color: 'var(--text-faint)' }}>
@@ -125,7 +149,7 @@ export function RunsListView() {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 200).map((r) => (
+              {pageRows.map((r) => (
                 <tr key={r.id} onClick={() => navPush(router, `/runs?id=${r.id}`)}>
                   <td>
                     <div className="fw-500">{r.task_name}</div>
@@ -171,6 +195,48 @@ export function RunsListView() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div
+        className="flex gap-2 mt-4"
+        style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}
+      >
+        <span className="muted fz-12">
+          {filtered.length === 0
+            ? 'No rows'
+            : `Rows ${currentPage * PAGE_SIZE + 1}–${Math.min(
+                (currentPage + 1) * PAGE_SIZE,
+                filtered.length,
+              )} of ${filtered.length}`}
+        </span>
+        <div className="flex gap-2" style={{ alignItems: 'center' }}>
+          {hitLimit && limit < FETCH_MAX && (
+            <button
+              className="btn sm"
+              onClick={() => setLimit((l) => Math.min(l + FETCH_STEP, FETCH_MAX))}
+              title="Older runs in the 7-day window exist beyond the current fetch limit"
+            >
+              Load more
+            </button>
+          )}
+          <button
+            className="btn sm"
+            disabled={currentPage === 0}
+            onClick={() => setPage(currentPage - 1)}
+          >
+            Prev
+          </button>
+          <span className="mono fz-12 muted">
+            {currentPage + 1} / {pageCount}
+          </span>
+          <button
+            className="btn sm"
+            disabled={currentPage >= pageCount - 1}
+            onClick={() => setPage(currentPage + 1)}
+          >
+            Next
+          </button>
         </div>
       </div>
     </>
