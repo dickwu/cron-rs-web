@@ -876,6 +876,13 @@ label.field > .help { font-size: 11px; color: var(--text-muted); margin-top: 4px
   .status-pill.running .dot,
   .status-pill.retrying .dot,
   .terminal-head .right .live .pulse { animation: none; }
+  /* Drawers, dialogs, toasts and hover effects appear without moving. */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 [data-tooltip] { position: relative; }
