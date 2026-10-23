@@ -104,7 +104,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           </div>
           <div className="page-subtitle mono">{task.id}</div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <button className="btn" onClick={onTrigger}>
             <Icon.play size={13} /> Trigger now
           </button>

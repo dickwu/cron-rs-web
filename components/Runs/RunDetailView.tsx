@@ -87,7 +87,7 @@ export function RunDetailView({ runId }: { runId: string }) {
           </div>
           <div className="page-subtitle mono">{run.id}</div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <button
             className="btn"
             onClick={() => navPush(router, `/tasks?id=${run.task_id}`)}

@@ -61,7 +61,7 @@ export function ChartCard() {
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
           <div className="seg">
             {(['bars', 'lines', 'heatmap'] as const).map((m) => (
               <button

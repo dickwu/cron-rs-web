@@ -25,7 +25,7 @@ const MS_PER_DAY = 86400 * 1000;
 export function TasksListView() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const { tasks } = useTasks();
+  const { tasks, error, isLoading, mutate: refetchTasks } = useTasks();
   const { taskActivity } = useTaskActivity(SPARK_DAYS);
   const showSchedule = usePrefs((s) => s.showSchedule);
   const showCommand = usePrefs((s) => s.showCommand);
@@ -126,8 +126,8 @@ export function TasksListView() {
             {visible.length} of {tasks.length} task{tasks.length === 1 ? '' : 's'}
           </div>
         </div>
-        <div className="flex gap-2">
-          <div style={{ position: 'relative' }}>
+        <div className="flex gap-2" style={{ flexWrap: 'wrap', minWidth: 0 }}>
+          <div style={{ position: 'relative', flex: '0 1 280px', minWidth: 0 }}>
             <Icon.search
               size={13}
               style={{
@@ -142,7 +142,7 @@ export function TasksListView() {
               placeholder="Search tasks, tags…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              style={{ paddingLeft: 30, width: 280 }}
+              style={{ paddingLeft: 30, width: '100%' }}
             />
           </div>
           <button
@@ -314,7 +314,44 @@ export function TasksListView() {
                         fontSize: 13,
                       }}
                     >
-                      No tasks match the current filter.
+                      {error ? (
+                        <>
+                          <div style={{ color: 'var(--c-error)' }}>
+                            Couldn&apos;t load tasks:{' '}
+                            {error instanceof Error ? error.message : 'request failed'}. Check the
+                            API URL in Settings.
+                          </div>
+                          <button className="btn sm mt-4" onClick={() => refetchTasks()}>
+                            Try again
+                          </button>
+                        </>
+                      ) : isLoading ? (
+                        'Loading tasks…'
+                      ) : tasks.length === 0 ? (
+                        <>
+                          <div>No tasks yet. Create one to schedule a command with systemd.</div>
+                          <button
+                            className="btn primary sm mt-4"
+                            onClick={() => navPush(router, '/tasks?new=1')}
+                          >
+                            <Icon.plus size={11} /> New task
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div>No tasks match this search and filter.</div>
+                          <button
+                            className="btn sm mt-4"
+                            onClick={() => {
+                              setQ('');
+                              setTagFilter(null);
+                              setStatusFilter('all');
+                            }}
+                          >
+                            Clear search and filter
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

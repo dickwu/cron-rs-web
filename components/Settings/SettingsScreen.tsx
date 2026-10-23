@@ -186,7 +186,10 @@ export function SettingsScreen() {
             <div className="card-title">Appearance</div>
           </div>
           <div className="card-body">
-            <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div
+              className="grid-2"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}
+            >
               <label className="field">
                 <div className="label-row">
                   <span className="label">Theme</span>
@@ -341,7 +344,7 @@ export function SettingsScreen() {
                 overrides the server default for this browser only.
               </div>
             </label>
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-3" style={{ flexWrap: 'wrap' }}>
               <button className="btn primary" onClick={handleSaveApi}>
                 Save API URL
               </button>
@@ -451,7 +454,7 @@ export function SettingsScreen() {
                 max={3650}
               />
             </label>
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-3" style={{ flexWrap: 'wrap' }}>
               <button
                 className="btn primary"
                 onClick={handleSaveRetention}
