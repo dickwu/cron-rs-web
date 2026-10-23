@@ -1,15 +1,21 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import React, { useEffect, useState } from 'react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/icons';
 import { toast } from '@/components/ui/Toaster';
-import { CronBuilder } from './CronBuilder';
 import { createTask, updateTask } from '@/lib/api';
 import { normalizeScheduleExpression } from '@/lib/schedule';
 import { normalizeTags } from '@/lib/tags';
 import type { Task, CreateTaskPayload } from '@/lib/types';
+
+// Heavy, on-demand UI is split into separate chunks.
+const CronBuilder = dynamic(() => import('./CronBuilder').then((m) => m.CronBuilder), {
+  ssr: false,
+  loading: () => <div className="muted fz-12" style={{ padding: 12 }}>Loading schedule builder…</div>,
+});
 
 interface FormState {
   name: string;

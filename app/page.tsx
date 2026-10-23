@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSWRConfig } from 'swr';
@@ -7,16 +8,27 @@ import { AppShell } from '@/components/Layout/AppShell';
 import { Icon } from '@/components/ui/icons';
 import { toast } from '@/components/ui/Toaster';
 import { StatsCards } from '@/components/Dashboard/StatsCards';
-import { ChartCard } from '@/components/Dashboard/ChartCard';
 import { Upcoming } from '@/components/Dashboard/Upcoming';
 import { RecentRunsCard } from '@/components/Dashboard/RecentRuns';
 import { RecentFailures } from '@/components/Dashboard/RecentFailures';
-import { HeatmapCard } from '@/components/Dashboard/HeatmapCard';
 import { TopTasksCard } from '@/components/Dashboard/TopTasks';
 import { EmptyState } from '@/components/Dashboard/EmptyState';
-import { TaskFormDrawer } from '@/components/Tasks/TaskFormDrawer';
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { navPush } from '@/lib/navigation';
+
+// Heavy, on-demand UI is split into separate chunks.
+const ChartCard = dynamic(() => import('@/components/Dashboard/ChartCard').then((m) => m.ChartCard), {
+  ssr: false,
+  loading: () => <div className="card" style={{ minHeight: 280 }} aria-busy="true" />,
+});
+const HeatmapCard = dynamic(() => import('@/components/Dashboard/HeatmapCard').then((m) => m.HeatmapCard), {
+  ssr: false,
+  loading: () => <div className="card" style={{ minHeight: 200 }} aria-busy="true" />,
+});
+const TaskFormDrawer = dynamic(() => import('@/components/Tasks/TaskFormDrawer').then((m) => m.TaskFormDrawer), {
+  ssr: false,
+  loading: () => null,
+});
 
 function DashboardInner() {
   const router = useRouter();
