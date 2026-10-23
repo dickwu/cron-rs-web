@@ -28,20 +28,58 @@ export function isAuthenticated(): boolean {
   return !!getToken();
 }
 
-export function getApiUrl(): string {
-  if (typeof window === 'undefined') return SERVER_DEFAULT_API_URL;
+export type ApiUrlSource = 'saved' | 'runtime' | 'browser';
 
-  const configured = window.__CRON_RS_CONFIG__?.apiUrl?.trim();
-  if (configured) return normalizeApiUrl(configured);
+/**
+ * Resolve the daemon URL. Precedence:
+ *   1. a URL the user saved in this browser (Settings / login), unless it is a
+ *      loopback URL left over from another machine;
+ *   2. `apiUrl` from `/runtime-config.js` (set by the embedded web server's
+ *      `--api-url`);
+ *   3. `<browser host>:9746`.
+ * The user's explicit choice wins so the Settings override always takes
+ * effect, even when the server publishes a runtime default.
+ */
+export function resolveApiUrl(): { url: string; source: ApiUrlSource } {
+  if (typeof window === 'undefined') return { url: SERVER_DEFAULT_API_URL, source: 'browser' };
 
   const saved = localStorage.getItem(API_URL_KEY);
-  if (saved && !isStaleLoopbackUrl(saved)) return normalizeApiUrl(saved);
+  if (saved && !isStaleLoopbackUrl(saved)) return { url: normalizeApiUrl(saved), source: 'saved' };
 
-  return defaultApiUrlFromBrowserHost();
+  const runtime = getRuntimeApiUrl();
+  if (runtime) return { url: runtime, source: 'runtime' };
+
+  return { url: defaultApiUrlFromBrowserHost(), source: 'browser' };
+}
+
+export function getApiUrl(): string {
+  return resolveApiUrl().url;
+}
+
+/** `apiUrl` published by the web server in `/runtime-config.js`, if any. */
+export function getRuntimeApiUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const configured = window.__CRON_RS_CONFIG__?.apiUrl?.trim();
+  return configured ? normalizeApiUrl(configured) : null;
+}
+
+/** The URL used when no override is saved: runtime config, else browser host. */
+export function getDefaultApiUrl(): string {
+  if (typeof window === 'undefined') return SERVER_DEFAULT_API_URL;
+  return getRuntimeApiUrl() ?? defaultApiUrlFromBrowserHost();
 }
 
 export function setApiUrl(url: string): void {
   localStorage.setItem(API_URL_KEY, normalizeApiUrl(url));
+}
+
+/**
+ * Persist `url` only when it differs from the default; otherwise drop any
+ * override so future changes to the runtime config are picked up.
+ */
+export function saveApiUrlIfOverride(url: string): void {
+  if (normalizeApiUrl(url) === getDefaultApiUrl()) clearApiUrl();
+  else setApiUrl(url);
 }
 
 export function clearApiUrl(): void {

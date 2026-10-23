@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/icons';
 import { Toaster, toast } from '@/components/ui/Toaster';
 import { login } from '@/lib/api';
-import { setToken, setApiUrl, getApiUrl } from '@/lib/auth';
+import { setToken, saveApiUrlIfOverride, getApiUrl } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +22,9 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      setApiUrl(url);
+      // Only persist a real override, so the server's runtime config keeps
+      // applying when the user accepts the prefilled default.
+      saveApiUrlIfOverride(url);
       const res = await login({ username, password });
       setToken(res.token);
       toast('Login successful', 'success');
@@ -97,7 +99,7 @@ export default function LoginPage() {
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <div className="mt-4 muted fz-11 text-right">cron-rs-web · v0.3.0</div>
+        <div className="mt-4 muted fz-11 text-right">cron-rs-web · v{process.env.NEXT_PUBLIC_APP_VERSION}</div>
       </div>
       <Toaster />
     </div>

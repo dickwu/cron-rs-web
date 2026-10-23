@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { Icon } from '@/components/ui/icons';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Tag } from '@/components/ui/Tag';
@@ -11,11 +11,13 @@ import { useStatus } from '@/hooks/useRuns';
 import { usePrefs, ACCENT_COLORS } from '@/stores/prefsStore';
 import {
   clearApiUrl,
+  getRuntimeApiUrl,
+  resolveApiUrl,
+  saveApiUrlIfOverride,
+  type ApiUrlSource,
   clearToken,
-  getApiUrl,
   getBrowserDefaultApiUrl,
   getStoredApiUrl,
-  setApiUrl,
 } from '@/lib/auth';
 import { swrFetcher, updateSettings } from '@/lib/api';
 import { fmtDateTime } from '@/lib/date';
@@ -50,6 +52,8 @@ export function SettingsScreen() {
   const [browserDefault, setBrowserDefault] = useState('http://localhost:9746');
   const [currentUrl, setCurrentUrl] = useState('http://localhost:9746');
   const [storedUrl, setStoredUrl] = useState<string | null>(null);
+  const [runtimeUrl, setRuntimeUrl] = useState<string | null>(null);
+  const [urlSource, setUrlSource] = useState<ApiUrlSource>('browser');
   const [token, setToken] = useState<string | null>(null);
   const [claims, setClaims] = useState<TokenClaims | null>(null);
   const [origin, setOrigin] = useState('');
@@ -82,14 +86,14 @@ export function SettingsScreen() {
   }, [settings?.retention_days]);
 
   useEffect(() => {
-    const def = getBrowserDefaultApiUrl();
-    const cur = getApiUrl();
-    const stored = getStoredApiUrl();
+    const resolved = resolveApiUrl();
     const tok = window.localStorage.getItem('cron_rs_token');
-    setBrowserDefault(def);
-    setCurrentUrl(cur);
-    setApiUrlField(cur);
-    setStoredUrl(stored);
+    setBrowserDefault(getBrowserDefaultApiUrl());
+    setRuntimeUrl(getRuntimeApiUrl());
+    setCurrentUrl(resolved.url);
+    setUrlSource(resolved.source);
+    setApiUrlField(resolved.url);
+    setStoredUrl(getStoredApiUrl());
     setToken(tok);
     setClaims(decodeClaims(tok));
     setOrigin(window.location.origin);
@@ -97,21 +101,34 @@ export function SettingsScreen() {
 
   const expiryLabel = claims?.exp ? fmtDateTime(claims.exp * 1000) : 'Unknown';
 
-  const handleSaveApi = () => {
-    setApiUrl(apiUrlField);
-    setCurrentUrl(apiUrlField.replace(/\/+$/, ''));
-    setStoredUrl(apiUrlField.replace(/\/+$/, ''));
+  const refreshUrlState = () => {
+    const resolved = resolveApiUrl();
+    setCurrentUrl(resolved.url);
+    setUrlSource(resolved.source);
+    setStoredUrl(getStoredApiUrl());
+    setApiUrlField(resolved.url);
     setHealthState('idle');
-    toast('API URL saved', 'success');
+    // Everything cached came from the previous backend.
+    mutate(() => true, undefined, { revalidate: true });
+  };
+
+  const handleSaveApi = () => {
+    if (!apiUrlField.trim()) {
+      toast('API URL is required', 'error');
+      return;
+    }
+    saveApiUrlIfOverride(apiUrlField);
+    refreshUrlState();
+    toast(
+      getStoredApiUrl() ? 'API URL override saved' : 'Using the default API URL',
+      'success',
+    );
   };
 
   const handleResetApi = () => {
     clearApiUrl();
-    setCurrentUrl(browserDefault);
-    setStoredUrl(null);
-    setApiUrlField(browserDefault);
-    setHealthState('idle');
-    toast('API URL reset to browser default', 'info');
+    refreshUrlState();
+    toast(runtimeUrl ? 'API URL reset to the server default' : 'API URL reset to browser default', 'info');
   };
 
   const handleCheckHealth = async () => {
@@ -305,7 +322,8 @@ export function SettingsScreen() {
                 placeholder="http://server:9746"
               />
               <div className="help">
-                The browser connects to the cron-rs daemon at this address.
+                The browser connects to the cron-rs daemon at this address. A saved value
+                overrides the server default for this browser only.
               </div>
             </label>
             <div className="flex gap-2 mt-3">
@@ -319,8 +337,8 @@ export function SettingsScreen() {
               >
                 {healthState === 'checking' ? 'Checking…' : 'Test connection'}
               </button>
-              <button className="btn" onClick={handleResetApi}>
-                Use browser default
+              <button className="btn" onClick={handleResetApi} disabled={!storedUrl}>
+                {runtimeUrl ? 'Use server default' : 'Use browser default'}
               </button>
             </div>
             {healthState === 'ok' && (
@@ -355,9 +373,33 @@ export function SettingsScreen() {
             )}
             <dl className="dl mt-4">
               <dt>Current</dt>
-              <dd className="mono">{currentUrl}</dd>
+              <dd className="mono">
+                {currentUrl}{' '}
+                <Tag subtle>
+                  {urlSource === 'saved'
+                    ? 'saved override'
+                    : urlSource === 'runtime'
+                    ? 'server runtime config'
+                    : 'browser default'}
+                </Tag>
+              </dd>
               <dt>Saved override</dt>
-              <dd>{storedUrl ? <Tag mono>{storedUrl}</Tag> : <span className="muted">None</span>}</dd>
+              <dd>
+                {storedUrl ? (
+                  <>
+                    <Tag mono>{storedUrl}</Tag>
+                    {urlSource !== 'saved' && (
+                      <span className="muted fz-12"> ignored (loopback URL from another host)</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="muted">None</span>
+                )}
+              </dd>
+              <dt>Server default</dt>
+              <dd className="mono">
+                {runtimeUrl ?? <span className="muted">Not set (runtime-config.js)</span>}
+              </dd>
               <dt>Browser default</dt>
               <dd className="mono">{browserDefault}</dd>
               <dt>Web origin</dt>
