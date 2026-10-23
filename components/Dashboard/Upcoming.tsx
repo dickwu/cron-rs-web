@@ -4,13 +4,15 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
 import { nextRunAt } from '@/lib/analytics';
-import { relTimeFuture, dayjs } from '@/lib/date';
+import { relTimeFuture, fmtInZone } from '@/lib/date';
+import { useServerTimeZone } from '@/hooks/useSchedule';
 import { navPush } from '@/lib/navigation';
 import { staggerAssignments, applyStaggerSecond } from '@/lib/stagger';
 
 export function Upcoming() {
   const router = useRouter();
   const { tasks } = useTasks();
+  const { timeZone } = useServerTimeZone();
 
   // Mirror the daemon's every-minute stagger — computed over all tasks
   // (including disabled, which hold their slot) so predicted seconds match the
@@ -24,7 +26,7 @@ export function Upcoming() {
       const second = stagger.get(t.id);
       const schedule =
         second === undefined ? t.schedule : applyStaggerSecond(t.schedule, second);
-      return { task: t, at: nextRunAt(schedule) };
+      return { task: t, at: nextRunAt(schedule, timeZone) };
     })
     .filter((x): x is { task: typeof x.task; at: Date } => x.at instanceof Date)
     .sort((a, b) => a.at.getTime() - b.at.getTime())
@@ -70,7 +72,7 @@ export function Upcoming() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="mono fz-12">{relTimeFuture(at)}</div>
-              <div className="muted fz-11">{dayjs(at).format('HH:mm:ss')}</div>
+              <div className="muted fz-11">{fmtInZone(at, 'HH:mm:ss', timeZone)}</div>
             </div>
           </button>
         ))}

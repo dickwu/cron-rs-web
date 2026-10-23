@@ -2,10 +2,12 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import duration from 'dayjs/plugin/duration';
+import timezone from 'dayjs/plugin/timezone';
 
 dayjs.extend(utc);
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
+dayjs.extend(timezone);
 
 /**
  * Parse a server timestamp robustly. The daemon writes UTC either as RFC 3339
@@ -71,6 +73,28 @@ export function fmtDuration(ms: number | null | undefined): string {
   const d = dayjs.duration(ms);
   if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
   return d.minutes() + 'm ' + d.seconds() + 's';
+}
+
+/**
+ * Format an instant as wall-clock time in `tz` (the server timezone). Falls
+ * back to the browser zone when `tz` is missing or not a valid IANA name.
+ */
+export function fmtInZone(
+  input: string | number | Date | null | undefined,
+  format: string,
+  tz?: string | null,
+  placeholder = '—',
+): string {
+  const d = parseDate(input);
+  if (!d) return placeholder;
+  if (tz) {
+    try {
+      return d.tz(tz).format(format);
+    } catch {
+      // Unknown zone: fall through to local formatting.
+    }
+  }
+  return d.format(format);
 }
 
 export function nowTs(): number {

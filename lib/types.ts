@@ -147,7 +147,19 @@ export interface HookRun {
   status: 'success' | 'failed' | 'timeout';
 }
 
-export type StatusResponse = DashboardSummary;
+export interface StatusResponse extends DashboardSummary {
+  /**
+   * IANA timezone the daemon (and therefore systemd) evaluates OnCalendar
+   * expressions in. `null` when the server could not determine it; absent on
+   * older daemons.
+   */
+  timezone?: string | null;
+}
+
+export interface SchedulePreviewResponse {
+  /** RFC 3339 timestamps of the next fire times. */
+  next_runs: string[];
+}
 
 export type SSEEventType =
   | 'task_created'

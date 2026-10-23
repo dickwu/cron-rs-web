@@ -11,6 +11,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useTaskActivity } from '@/hooks/useDashboard';
 import { describeSchedule } from '@/lib/schedule';
 import { nextRunAt } from '@/lib/analytics';
+import { useServerTimeZone } from '@/hooks/useSchedule';
 import { relTimeFuture } from '@/lib/date';
 import { triggerTask, enableTask, disableTask, deleteTask } from '@/lib/api';
 import { usePrefs } from '@/stores/prefsStore';
@@ -349,7 +350,8 @@ function TaskRow({
   showTags: boolean;
 }) {
   const desc = describeSchedule(task.schedule);
-  const next = nextRunAt(task.schedule);
+  const { timeZone } = useServerTimeZone();
+  const next = nextRunAt(task.schedule, timeZone);
   return (
     <tr onClick={onOpen} className={selected ? 'selected' : ''}>
       <td className="check" onClick={(e) => e.stopPropagation()}>

@@ -11,7 +11,9 @@ import { TaskFormDrawer } from './TaskFormDrawer';
 import { useTaskDetail } from '@/hooks/useTasks';
 import { describeSchedule } from '@/lib/schedule';
 import { nextRunAt } from '@/lib/analytics';
-import { relTime, relTimeFuture, fmtDuration, fmtDateTimeLong, dayjs } from '@/lib/date';
+import { relTime, relTimeFuture, fmtDuration, fmtInZone } from '@/lib/date';
+import { useServerTimeZone } from '@/hooks/useSchedule';
+import { NextRunsPreview } from './NextRunsPreview';
 import { triggerTask, deleteTask } from '@/lib/api';
 import { hookTypeLabels } from '@/lib/hooks';
 import { useSWRConfig } from 'swr';
@@ -37,7 +39,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const successRate = success + failed ? (success / (success + failed)) * 100 : null;
 
   const cronViz = useMemo(() => vizForSchedule(task?.schedule || ''), [task?.schedule]);
-  const next = task ? nextRunAt(task.schedule) : null;
+  const { timeZone } = useServerTimeZone();
+  const next = task ? nextRunAt(task.schedule, timeZone) : null;
 
   if (!task) {
     return (
@@ -122,7 +125,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             {task.enabled && next ? relTimeFuture(next) : 'Disabled'}
           </div>
           <div className="mono fz-11 muted">
-            {task.enabled && next ? fmtDateTimeLong(next) : '—'}
+            {task.enabled && next ? fmtInZone(next, 'ddd, MMM D, HH:mm:ss', timeZone) : '—'}
           </div>
         </div>
         <div className="stat-card">
@@ -221,27 +224,12 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </div>
             <div className="card-body">
               <CronTimeline minute={cronViz.minute} hour={cronViz.hour} />
-              {next && (
-                <div className="mt-4 mono fz-12">
-                  <span className="muted">Next 5 runs</span>
-                  <div style={{ marginTop: 6, color: 'var(--text-secondary)' }}>
-                    {Array.from({ length: 5 }).map((_, i) => {
-                      const d = dayjs(next).add(i, 'hour');
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            padding: '4px 0',
-                            borderBottom: '1px dashed var(--border-subtle)',
-                          }}
-                        >
-                          {d.format('ddd, MMM D · HH:mm')}
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="mt-4">
+                <div className="muted fz-12" style={{ marginBottom: 6 }}>
+                  Next 5 runs
                 </div>
-              )}
+                <NextRunsPreview schedule={task.schedule} framed={false} />
+              </div>
             </div>
           </div>
         </div>

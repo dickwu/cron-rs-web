@@ -7,6 +7,7 @@ import type {
   JobRun,
   HookRun,
   StatusResponse,
+  SchedulePreviewResponse,
   CreateTaskPayload,
   UpdateTaskPayload,
   CreateHookPayload,
@@ -18,7 +19,7 @@ import type {
   UpdateSettingsPayload,
 } from './types';
 
-class ApiError extends Error {
+export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
     super(message);
@@ -194,13 +195,15 @@ export async function getHookRuns(runId: string): Promise<HookRun[]> {
 }
 
 // Schedule preview
+export function schedulePreviewPath(schedule: string, count: number = 5): string {
+  return `/api/v1/schedule/preview?schedule=${encodeURIComponent(schedule)}&count=${count}`;
+}
+
 export async function getSchedulePreview(
-  expr: string,
+  schedule: string,
   count: number = 5
-): Promise<string[]> {
-  return fetchApi<string[]>(
-    `/api/v1/schedule/preview?expr=${encodeURIComponent(expr)}&count=${count}`
-  );
+): Promise<SchedulePreviewResponse> {
+  return fetchApi<SchedulePreviewResponse>(schedulePreviewPath(schedule, count));
 }
 
 // Settings
